@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>命理交叉验证系统</title>
+<style>
+  :root{ --bg:#f5f6f8; --card:#fff; --ink:#1f2733; --muted:#6b7785;
+         --line:#e6e9ee; --accent:#8a5a2b; --accent2:#2b5a8a; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:760px;margin:40px auto;padding:0 18px}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:90px}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--line);
+        border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  button{margin-top:22px;width:100%;padding:13px;background:var(--accent);
+        color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
+  button:hover{background:#74491f}
+  .note{font-size:12px;color:var(--muted);margin-top:14px}
+  .err{color:#c0392b;font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>命理交叉验证系统</h1>
+  <div class="sub">四柱八字 · 紫微斗数 · 周易 · 铁板神数 ｜ 多源交叉验证，分级结论</div>
+  <div class="card">
+    {% if error %}<div class="err">{{error}}</div>{% endif %}
+    <form method="post" action="/analyze">
+      <label>出生日期（阳历）</label>
+      <div class="row">
+        <div><input name="year" type="number" placeholder="年" value="1990" required></div>
+        <div><input name="month" type="number" placeholder="月" min="1" max="12" value="5" required></div>
+        <div><input name="day" type="number" placeholder="日" min="1" max="31" value="20" required></div>
+      </div>
+      <label>出生时辰</label>
+      <div class="row">
+        <div><input name="hour" type="number" placeholder="时(0-23)" min="0" max="23" value="12" required></div>
+        <div><input name="minute" type="number" placeholder="分" min="0" max="59" value="0"></div>
+        <div>
+          <select name="gender">
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+        </div>
+      </div>
+      <label>出生地（用于真太阳时修正）</label>
+      <select name="birthplace">
+        {% for c in cities %}<option value="{{c}}">{{c}}</option>{% endfor %}
+      </select>
+      <button type="submit">开始交叉验证分析</button>
+    </form>
+    <div class="note">提示：时辰越精确，八字/紫微/周易越稳定；模糊时辰会触发「考时复核」标记。本系统为传统文化研究参考，非医疗/投资/决策建议。</div>
+  </div>
+</div>
+</body>
+</html>
