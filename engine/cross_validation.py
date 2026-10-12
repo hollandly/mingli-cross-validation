@@ -3,6 +3,7 @@
 把四套体系的信号映射到同一组人生维度，计算一致性，对分歧维度触发『考时复核』，
 最终给出分级结论（高一致 / 中一致 / 分歧需复核）。"""
 from . import constants as C
+from .liunian import _xi_ji_sets, _tg_elem, _chong
 
 DIMS = ["性格", "事业", "财运", "婚姻", "家庭(六亲)", "健康", "时机运势"]
 
@@ -268,6 +269,141 @@ def _life_guidance(matrix, bazi, xi_set, ji_set, cons_counts, review_flags) -> d
             "dimension_tips": dim_tips, "by_phase": phase}
 
 
+# ============ 命格综合论断 · 用神人生映射 · 大运阶段详批（与前端 engines.js 对齐） ============
+def _mingge_zonglun(bazi: dict, yijing: dict, cv: dict) -> dict:
+    """命格综合论断：格局判定 + 喜用神推导 + 四体系交叉判读 + 本命卦互参。"""
+    day_gan = bazi["day_master"]
+    dm = bazi["day_element"]
+    strength = bazi["strength"]
+    xi, ji = _xi_ji_sets(bazi)
+    ec = bazi["element_count"]
+    top, bot, tm, bm = C.ELEMENTS[0], C.ELEMENTS[0], -1, 99
+    for e in C.ELEMENTS:
+        if ec[e] > tm:
+            tm, top = ec[e], e
+        if ec[e] < bm:
+            bm, bot = ec[e], e
+    tg = bazi["ten_gods"]
+    if strength == "身旺":
+        if "正官" in tg or "七杀" in tg:
+            pattern = "身旺官杀为用，主有担当、宜在规则与责任中建功"
+        elif "食神" in tg or "伤官" in tg:
+            pattern = "身旺食伤泄秀，主才思外显、宜以才艺表达立身"
+        elif "正财" in tg or "偏财" in tg:
+            pattern = "身旺财星得根，主务实进取、宜以经营生财"
+        else:
+            pattern = "身旺比劫林立，主自力自强、宜借协作与竞争成长"
+    elif strength == "身弱":
+        if "正印" in tg or "偏印" in tg:
+            pattern = "身弱印星为根，主得荫护、宜以学习与沉淀立基"
+        elif "比肩" in tg or "劫财" in tg:
+            pattern = "身弱比劫帮扶，主得同辈助力、宜合而不宜独"
+        else:
+            pattern = "身弱官杀/财星偏重，主外压内耗、宜借平台与人托底、勿单兵冒进"
+    else:
+        pattern = "日主中和，刚柔可调，宜因时顺势、不偏不倚"
+    xi_text = "、".join(xi) if xi else "（需结合全局细参）"
+    ji_text = "、".join(ji) if ji else "（需结合全局细参）"
+    xi_is_shengfu = ("正印" in xi or "偏印" in xi or "比肩" in xi or "劫财" in xi)
+    xi_phrase = "生扶我身、稳托根基" if xi_is_shengfu else "克泄耗我、引动成果"
+    ji_phrase = "再耗再克则根基更虚" if xi_is_shengfu else "再助再旺则物极必反"
+    hi = cv["cons_counts"]["高一致"]
+    div = cv["cons_counts"]["分歧"]
+    if div == 0 and hi >= 4:
+        xjudge = "四体系高度一致，结论可信度较高，可在高一致维度放心发力；"
+    elif div == 0:
+        xjudge = "四体系以中一致为主，整体可作稳健参考，关键决策仍辅以现实反馈；"
+    else:
+        xjudge = ("四体系有 %d 个维度存在分歧（多为『一守一攻』之互补：如八字偏守、紫微见贵，综合取『借平台稳进』），"
+                  "建议以『交叉共识＋现实印证』双保险，避免单凭一家之言下注；" % div)
+    meaning = (yijing.get("meaning") or "")[:22]
+    para = ("日主%s（%s），%s，五行%s。" % (dm, day_gan, strength,
+                "趋于平和" if top == bot else ("以「%s」偏盛、「%s」偏弱" % (top, bot)))
+            + "格局上" + pattern + "。用神宜取「" + xi_text + "」——" + xi_phrase + "；"
+            + "忌「" + ji_text + "」——" + ji_phrase + "。"
+            + xjudge
+            + "本命卦「%s」(%s)，动爻第 %s 爻，主%s——卦象与命局互参，整体取向%s。"
+              % (yijing["ben_gua"], yijing["gua_nature"], yijing["dong_yao"], meaning,
+                 "同气相应" if yijing["gua_elem"] == dm else "相成而可调"))
+    return {"paragraph": para, "xi_set": xi, "ji_set": ji, "pattern": pattern,
+            "top_element": top, "weak_element": bot, "xi_text": xi_text, "ji_text": ji_text}
+
+
+def _yongshen_map(bazi: dict, mingge: dict) -> dict:
+    """用神人生映射：方位 / 行业 / 助运色 / 调候（由喜用五行推导）。"""
+    de = bazi["day_element"]
+    xi = mingge["xi_set"]
+    elems = {}
+    for g in xi:
+        e = _tg_elem(de, g)
+        if e:
+            elems[e] = 1
+    if bazi["strength"] == "身弱":
+        elems[de] = 1
+    DIR = {"木": "东方", "火": "南方", "土": "中原/本地", "金": "西方", "水": "北方"}
+    IND = {"木": "文化教育、农林园艺、创意设计、出版", "火": "能源电力、传媒餐饮、互联网、文化演艺",
+           "土": "地产建筑、金融实业、服务管理、仓储", "金": "机械制造、法律司法、金融精算、五金",
+           "水": "贸易流通、咨询策划、交通运输、旅游"}
+    COL = {"木": "青/绿", "火": "红/紫", "土": "黄/褐", "金": "白/金", "水": "黑/蓝"}
+    TIAO = {"木": "多接触自然与新知、主动拓展人际", "火": "勇于表达与展示、保持行动力",
+            "土": "重积累与信用、行事稳妥少变", "金": "讲规则重契约、精炼专业壁垒",
+            "水": "灵活应变、以柔克刚、多走动"}
+    rows = []
+    for e in elems:
+        rows.append({"element": e, "dir": DIR[e], "ind": IND[e], "col": COL[e], "tiao": TIAO[e]})
+    if not rows:
+        rows.append({"element": de, "dir": DIR[de], "ind": IND[de], "col": COL[de], "tiao": TIAO[de]})
+    return {"elements": list(elems.keys()), "rows": rows}
+
+
+def _dayun_detail(bazi: dict, birth_year: int) -> list:
+    """大运阶段详批：主题 + 关键转折年（岁运并临 / 天克地冲）+ 阶段建议。"""
+    day_gan = bazi["day_master"]
+    xi, ji = _xi_ji_sets(bazi)
+
+    def theme(god):
+        if god in ("正官", "七杀"):
+            return "事业进阶：责任与考核加重，宜争位、掌权、立专业壁垒"
+        if god in ("正印", "偏印"):
+            return "沉淀蓄能：利学习考证、得长辈/平台荫护，宜厚积"
+        if god in ("正财", "偏财"):
+            return "务实生财：重现金流与业务落地，偏财年须防贪"
+        if god in ("食神", "伤官"):
+            return "才艺外显：利表达创新与变动，也须防口舌是非"
+        if god in ("比肩", "劫财"):
+            return "协作竞争：宜合伙借力，但分账权责须白纸黑字"
+        return "平运守成：稳扎稳打、积累资源，不躁不怠"
+
+    out = []
+    if bazi["dayun"][0]["start_age"] > 0:
+        out.append({"range": "0–%d岁" % (round(bazi["dayun"][0]["start_age"]) - 1), "gz": "命局",
+                    "theme": "本命奠基：以学业、心性养成与家庭支持为主，不急于闯荡",
+                    "turning": "—", "tip": "未起运，顺势养根基；大额押注与远行宜缓。"})
+    for d in bazi["dayun"]:
+        god = C.ten_god(day_gan, d["gz"][0])
+        fav = god in xi
+        bad = god in ji
+        turning = []
+        a0 = round(d["start_age"])
+        a1 = round(d["end_age"] - 1)
+        for a in range(a0, a1 + 1):
+            yr = birth_year + a - 1
+            gz = C.GZ60[(yr - 4) % 60]
+            if gz == d["gz"]:
+                turning.append("%d岁（岁运并临）" % a)
+            else:
+                gk = C.KE.get(gz[0]) == d["gz"][0] or C.KE.get(d["gz"][0]) == gz[0]
+                if gk and _chong(gz[1], d["gz"][1]):
+                    turning.append("%d岁（天克地冲·大变动）" % a)
+        tip = ("此运干支为喜，十年动能偏顺——宜把握窗口、主动进取、放大成果；顺境也别放松风控。"
+               if fav else "此运干支为忌，守成蓄势的十年——控风险、重大决策三思、不替人担保、不盲目加杠杆，以稳换空间。"
+               if bad else "此运平气，稳扎稳打、积累实力与资源，不主动制造大变动。")
+        out.append({"range": "%d–%d岁" % (a0, a1), "gz": d["gz"],
+                    "theme": theme(god) + ("（喜运）" if fav else "（忌运）" if bad else ""),
+                    "turning": "；".join(turning[:2]) if turning else "无明显大变动年", "tip": tip})
+    return out
+
+
 def cross_validate(bazi, ziwei, yijing, tieban) -> dict:
     bs = bazi_signals(bazi)
     zs = ziwei_signals(ziwei)
@@ -322,8 +458,7 @@ def cross_validate(bazi, ziwei, yijing, tieban) -> dict:
         grade = "分歧需复核 · 时辰或参数待考证"
 
     # 综合结论文字（每维度给一句 + 指导建议）
-    from .liunian import _xi_ji_sets  # 复用喜忌判定
-    xi_set2, ji_set2 = _xi_ji_sets(bazi["strength"])
+    xi_set2, ji_set2 = _xi_ji_sets(bazi)
     life = _life_guidance(matrix, bazi, xi_set2, ji_set2, cons_counts, review_flags)
     conclusions = []
     for m in matrix:
@@ -336,6 +471,11 @@ def cross_validate(bazi, ziwei, yijing, tieban) -> dict:
             "advice": life["dimension_tips"][m["dimension"]],
         })
 
+    # 命格综合论断 · 用神人生映射 · 大运阶段详批（深度模块）
+    mingge = _mingge_zonglun(bazi, yijing, {"cons_counts": cons_counts})
+    yongshen = _yongshen_map(bazi, mingge)
+    dayun_detail = _dayun_detail(bazi, bazi["birth_year"])
+
     return {
         "matrix": matrix,
         "review_flags": review_flags,
@@ -343,4 +483,7 @@ def cross_validate(bazi, ziwei, yijing, tieban) -> dict:
         "grade": grade,
         "conclusions": conclusions,
         "life_guidance": life,
+        "mingge": mingge,
+        "yongshen": yongshen,
+        "dayun_detail": dayun_detail,
     }

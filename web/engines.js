@@ -582,13 +582,155 @@
     matrix.forEach(function (m) { cons_counts[m.consistency]++; });
     var grade = cons_counts["分歧"] === 0 && cons_counts["高一致"] >= 4 ? "高一致 · 结论可信度较高"
       : cons_counts["分歧"] === 0 ? "中一致 · 结论可作参考" : "分歧需复核 · 时辰或参数待考证";
-    var xi_ji = _xi_ji_sets(bazi.strength), xi_set2 = xi_ji[0], ji_set2 = xi_ji[1];
+    var xi_ji = _xi_ji_sets(bazi), xi_set2 = xi_ji[0], ji_set2 = xi_ji[1];
     var life = _life_guidance(matrix, bazi, xi_set2, ji_set2, cons_counts, review_flags);
     var conclusions = matrix.map(function (m) {
       var direction = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
       return { dimension: m.dimension, direction: direction, consistency: m.consistency, summary: m.dimension + "：综合评级 " + direction + "（一致性 " + m.consistency + "）。", advice: life.dimension_tips[m.dimension] };
     });
     return { matrix: matrix, review_flags: review_flags, cons_counts: cons_counts, grade: grade, conclusions: conclusions, life_guidance: life };
+  }
+
+  // ============ 深度增强：命格综合论断 / 用神映射 / 流年机理 / 大运详批 ============
+  function _chong(a, b) {
+    return (a === "子" && b === "午") || (a === "午" && b === "子") ||
+           (a === "丑" && b === "未") || (a === "未" && b === "丑") ||
+           (a === "寅" && b === "申") || (a === "申" && b === "寅") ||
+           (a === "卯" && b === "酉") || (a === "酉" && b === "卯") ||
+           (a === "辰" && b === "戌") || (a === "戌" && b === "辰") ||
+           (a === "巳" && b === "亥") || (a === "亥" && b === "巳");
+  }
+  function _he6(a, b) {
+    return (a === "子" && b === "丑") || (a === "丑" && b === "子") ||
+           (a === "寅" && b === "亥") || (a === "亥" && b === "寅") ||
+           (a === "卯" && b === "戌") || (a === "戌" && b === "卯") ||
+           (a === "辰" && b === "酉") || (a === "酉" && b === "辰") ||
+           (a === "巳" && b === "申") || (a === "申" && b === "巳") ||
+           (a === "午" && b === "未") || (a === "未" && b === "午");
+  }
+  // 十神 → 五行
+  function _tg_elem(de, g) {
+    if (g === "比肩" || g === "劫财") return de;
+    if (g === "正印" || g === "偏印") return ELEMENTS.filter(function (e) { return SHENG[e] === de; })[0];
+    if (g === "食神" || g === "伤官") return SHENG[de];
+    if (g === "正财" || g === "偏财") return KE[de];
+    if (g === "正官" || g === "七杀") return ELEMENTS.filter(function (e) { return KE[e] === de; })[0];
+    return null;
+  }
+  // 命格综合论断：专业叙事 + 喜用神推导 + 四体系交叉判读
+  function _mingge_zonglun(bazi, yijing, cv) {
+    var day_gan = bazi.day_master, dm = bazi.day_element, strength = bazi.strength;
+    var xiji = _xi_ji_sets(bazi), xi = xiji[0], ji = xiji[1];
+    var ec = bazi.element_count, top = ELEMENTS[0], bot = ELEMENTS[0], tm = -1, bm = 99;
+    ELEMENTS.forEach(function (e) { if (ec[e] > tm) { tm = ec[e]; top = e; } if (ec[e] < bm) { bm = ec[e]; bot = e; } });
+    var tg = bazi.ten_gods, pattern;
+    if (strength === "身旺") {
+      if (tg.indexOf("正官") >= 0 || tg.indexOf("七杀") >= 0) pattern = "身旺官杀为用，主有担当、宜在规则与责任中建功";
+      else if (tg.indexOf("食神") >= 0 || tg.indexOf("伤官") >= 0) pattern = "身旺食伤泄秀，主才思外显、宜以才艺表达立身";
+      else if (tg.indexOf("正财") >= 0 || tg.indexOf("偏财") >= 0) pattern = "身旺财星得根，主务实进取、宜以经营生财";
+      else pattern = "身旺比劫林立，主自力自强、宜借协作与竞争成长";
+    } else if (strength === "身弱") {
+      if (tg.indexOf("正印") >= 0 || tg.indexOf("偏印") >= 0) pattern = "身弱印星为根，主得荫护、宜以学习与沉淀立基";
+      else if (tg.indexOf("比肩") >= 0 || tg.indexOf("劫财") >= 0) pattern = "身弱比劫帮扶，主得同辈助力、宜合而不宜独";
+      else pattern = "身弱官杀/财星偏重，主外压内耗、宜借平台与人托底、勿单兵冒进";
+    } else pattern = "日主中和，刚柔可调，宜因时顺势、不偏不倚";
+    var xi_text = xi.length ? xi.join("、") : "（需结合全局细参）";
+    var ji_text = ji.length ? ji.join("、") : "（需结合全局细参）";
+    var xi_is_shengfu = xi.indexOf("正印") >= 0 || xi.indexOf("偏印") >= 0 || xi.indexOf("比肩") >= 0 || xi.indexOf("劫财") >= 0;
+    var xi_phrase = xi_is_shengfu ? "生扶我身、稳托根基" : "克泄耗我、引动成果";
+    var ji_phrase = xi_is_shengfu ? "再耗再克则根基更虚" : "再助再旺则物极必反";
+    var hi = cv.cons_counts["高一致"], div = cv.cons_counts["分歧"];
+    var xjudge;
+    if (div === 0 && hi >= 4) xjudge = "四体系高度一致，结论可信度较高，可在高一致维度放心发力；";
+    else if (div === 0) xjudge = "四体系以中一致为主，整体可作稳健参考，关键决策仍辅以现实反馈；";
+    else xjudge = "四体系有 " + div + " 个维度存在分歧（多为『一守一攻』之互补：如八字偏守、紫微见贵，综合取『借平台稳进』），建议以『交叉共识＋现实印证』双保险，避免单凭一家之言下注；";
+    var para = "日主" + dm + "（" + day_gan + "），" + strength + "，五行" + (top === bot ? "趋于平和" : ("以「" + top + "」偏盛、「" + bot + "」偏弱")) + "。" +
+      "格局上" + pattern + "。用神宜取「" + xi_text + "」——" + xi_phrase + "；" +
+      "忌「" + ji_text + "」——" + ji_phrase + "。" +
+      xjudge +
+      "本命卦「" + yijing.ben_gua + "」(" + yijing.gua_nature + ")，动爻第 " + yijing.dong_yao + " 爻，主" + (yijing.meaning || "").slice(0, 22) + "——卦象与命局互参，整体取向" + (yijing.gua_elem === dm ? "同气相应" : "相成而可调") + "。";
+    return { paragraph: para, xi_set: xi, ji_set: ji, pattern: pattern, top_element: top, weak_element: bot, xi_text: xi_text, ji_text: ji_text };
+  }
+  // 用神人生映射：方位 / 行业 / 助运色 / 调候（由喜用五行推导）
+  function _yongshen_map(bazi, mingge) {
+    var de = bazi.day_element, xi = mingge.xi_set;
+    var elems = {}; xi.forEach(function (g) { var e = _tg_elem(de, g); if (e) elems[e] = 1; });
+    if (bazi.strength === "身弱") elems[de] = 1;
+    var DIR = { "木": "东方", "火": "南方", "土": "中原/本地", "金": "西方", "水": "北方" };
+    var IND = { "木": "文化教育、农林园艺、创意设计、出版", "火": "能源电力、传媒餐饮、互联网、文化演艺", "土": "地产建筑、金融实业、服务管理、仓储", "金": "机械制造、法律司法、金融精算、五金", "水": "贸易流通、咨询策划、交通运输、旅游" };
+    var COL = { "木": "青/绿", "火": "红/紫", "土": "黄/褐", "金": "白/金", "水": "黑/蓝" };
+    var TIAO = { "木": "多接触自然与新知、主动拓展人际", "火": "勇于表达与展示、保持行动力", "土": "重积累与信用、行事稳妥少变", "金": "讲规则重契约、精炼专业壁垒", "水": "灵活应变、以柔克刚、多走动" };
+    var rows = [];
+    Object.keys(elems).forEach(function (e) { rows.push({ element: e, dir: DIR[e], ind: IND[e], col: COL[e], tiao: TIAO[e] }); });
+    if (!rows.length) rows.push({ element: de, dir: DIR[de], ind: IND[de], col: COL[de], tiao: TIAO[de] });
+    return { elements: Object.keys(elems), rows: rows };
+  }
+  // 流年机理：流年干支如何作用于日主 / 大运 / 命局
+  function _liunian_mechanism(bazi, row) {
+    var day_gan = bazi.day_master, day_elem = bazi.day_element;
+    var y_gan = row.gz[0], y_zhi = row.gz[1], rel = row.shi_shen;
+    var rel_txt = {
+      "正官": "约束规范，主责任与名位", "七杀": "克制挑战，主压力与变动", "正印": "生扶荫护，主学习与贵人",
+      "偏印": "偏助暗养，主钻研与孤独", "食神": "泄秀生财，主才艺与安逸", "伤官": "发泄外露，主表达与是非",
+      "正财": "我克之财，主稳定收入", "偏财": "流动之财，主机遇与风险", "比肩": "同辈分力，主协作与竞争", "劫财": "分夺之象，主破耗与争夺"
+    }[rel] || "中性平气";
+    var s = (row.dayun_gz && row.dayun_gz !== "—") ? ("行「" + row.dayun_gz + "」大运（" + row.dayun_shishen + "）") : "尚未起运（依本命局）";
+    var mech = "流年「" + row.gz + "」，天干「" + y_gan + "」为日主「" + day_gan + "（" + day_elem + "）」之「" + rel + "」——" + rel_txt + "；" + s + "。";
+    var day_zhi = bazi.four_pillars.day.gz[1], month_zhi = bazi.four_pillars.month.gz[1];
+    var note;
+    if (_chong(y_zhi, day_zhi)) note = "流年支「" + y_zhi + "」冲日支「" + day_zhi + "」，年内个人/婚姻/健康层面易有波动，宜稳";
+    else if (_chong(y_zhi, month_zhi)) note = "流年支「" + y_zhi + "」冲月令「" + month_zhi + "」，环境与事业平台易生变动";
+    else if (_he6(y_zhi, day_zhi)) note = "流年支「" + y_zhi + "」合日支「" + day_zhi + "」，自身与人际气场趋于和合";
+    else note = "流年支「" + y_zhi + "」与命局无强冲合，顺势而为即可";
+    mech += note + "。";
+    return mech;
+  }
+  // 流年关键月份：流月地支冲/合 流年支、日支、大运支
+  function _liunian_key_months(bazi, row) {
+    var y_zhi = row.gz[1];
+    var day_zhi = bazi.four_pillars.day.gz[1];
+    var dy_zhi = (row.dayun_gz && row.dayun_gz !== "—") ? row.dayun_gz[1] : null;
+    var start_gan_idx = { "甲": 2, "己": 2, "乙": 4, "庚": 4, "丙": 6, "辛": 6, "丁": 8, "壬": 8, "戊": 0, "癸": 0 }[row.gz[0]];
+    var watch = [], favor = [];
+    for (var m = 1; m <= 12; m++) {
+      var mz = ZHI[(2 + (m - 1)) % 12];
+      if (_chong(mz, y_zhi) || (dy_zhi && _chong(mz, dy_zhi)) || _chong(mz, day_zhi)) watch.push(m + "月（流月「" + mz + "」冲动）");
+      else if (_he6(mz, y_zhi)) favor.push(m + "月（流月「" + mz + "」合流年，气场和合）");
+    }
+    return { watch: watch.slice(0, 3), favor: favor.slice(0, 3) };
+  }
+  // 大运阶段详批：主题 + 关键转折年（岁运并临/天克地冲）+ 阶段建议
+  function _dayun_detail(bazi, birth_year) {
+    var day_gan = bazi.day_master, xiji = _xi_ji_sets(bazi), xi = xiji[0], ji = xiji[1];
+    function theme(god) {
+      if (god === "正官" || god === "七杀") return "事业进阶：责任与考核加重，宜争位、掌权、立专业壁垒";
+      if (god === "正印" || god === "偏印") return "沉淀蓄能：利学习考证、得长辈/平台荫护，宜厚积";
+      if (god === "正财" || god === "偏财") return "务实生财：重现金流与业务落地，偏财年须防贪";
+      if (god === "食神" || god === "伤官") return "才艺外显：利表达创新与变动，也须防口舌是非";
+      if (god === "比肩" || god === "劫财") return "协作竞争：宜合伙借力，但分账权责须白纸黑字";
+      return "平运守成：稳扎稳打、积累资源，不躁不怠";
+    }
+    var out = [];
+    if (bazi.dayun[0].start_age > 0) out.push({ range: "0–" + (Math.round(bazi.dayun[0].start_age) - 1) + "岁", gz: "命局", theme: "本命奠基：以学业、心性养成与家庭支持为主，不急于闯荡", turning: "—", tip: "未起运，顺势养根基；大额押注与远行宜缓。" });
+    bazi.dayun.forEach(function (d) {
+      var god = ten_god(day_gan, d.gz[0]);
+      var fav = xi.indexOf(god) >= 0, bad = ji.indexOf(god) >= 0;
+      var turning = [];
+      var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+      for (var a = a0; a <= a1; a++) {
+        var yr = birth_year + a - 1, gz = GZ60[(yr - 4) % 60];
+        if (gz === d.gz) turning.push(a + "岁（岁运并临）");
+        else {
+          var gk = KE[gz[0]] === d.gz[0] || KE[d.gz[0]] === gz[0];
+          if (gk && _chong(gz[1], d.gz[1])) turning.push(a + "岁（天克地冲·大变动）");
+        }
+      }
+      var tip = fav ? "此运干支为喜，十年动能偏顺——宜把握窗口、主动进取、放大成果；顺境也别放松风控。"
+        : bad ? "此运干支为忌，守成蓄势的十年——控风险、重大决策三思、不替人担保、不盲目加杠杆，以稳换空间。"
+          : "此运平气，稳扎稳打、积累实力与资源，不主动制造大变动。";
+      out.push({ range: a0 + "–" + a1 + "岁", gz: d.gz, theme: theme(god) + (fav ? "（喜运）" : bad ? "（忌运）" : ""), turning: turning.length ? turning.slice(0, 2).join("；") : "无明显大变动年", tip: tip });
+    });
+    return out;
   }
 
   // ============ 流年 ============
@@ -659,11 +801,17 @@
     cat["时机"] = timing;
     return cat;
   }
-  function _xi_ji_sets(strength) {
+  function _xi_ji_sets(bazi) {
+    var strength = bazi.strength, de = bazi.day_element, ec = bazi.element_count;
     var ke_xie = ["正官", "七杀", "食神", "伤官", "正财", "偏财"], sheng_fu = ["比肩", "劫财", "正印", "偏印"];
     if (strength === "身旺") return [ke_xie, sheng_fu];
     if (strength === "身弱") return [sheng_fu, ke_xie];
-    return [[], []];
+    // 中和：依全局最旺五行判断偏势，给出可调喜用（日主中和但被耗则喜生扶，偏助则喜克泄）
+    var top = ELEMENTS[0], tm = -1;
+    ELEMENTS.forEach(function (e) { if (ec[e] > tm) { tm = ec[e]; top = e; } });
+    var sheng_elems = [de]; ELEMENTS.forEach(function (e) { if (SHENG[e] === de) sheng_elems.push(e); });
+    if (sheng_elems.indexOf(top) >= 0) return [ke_xie, sheng_fu];
+    return [sheng_fu, ke_xie];
   }
   function _score_to_grade(score) {
     if (score >= 1.2) return ["吉", "hi", "流年得力，是落地关键决策的窗口，但顺境别放松风控"];
@@ -683,7 +831,7 @@
   }
   function compute_liunian(bazi, ziwei, birth, span_back, span_fwd) {
     span_back = span_back || 2; span_fwd = span_fwd || 8;
-    var day_gan = bazi.day_master, xi_ji = _xi_ji_sets(bazi.strength), xi_set = xi_ji[0], ji_set = xi_ji[1];
+    var day_gan = bazi.day_master, xi_ji = _xi_ji_sets(bazi), xi_set = xi_ji[0], ji_set = xi_ji[1];
     var now_year = new Date().getFullYear(), birth_year = birth.getFullYear();
     var palaces = ziwei.palaces, zhi_palace_idx = {};
     palaces.forEach(function (p, i) { zhi_palace_idx[p.zhi] = i; });
@@ -714,6 +862,8 @@
       var has_lu = sihua_hit.some(function (s) { return s[0] === "禄"; });
       var has_ji = sihua_hit.some(function (s) { return s[0] === "忌"; });
       var cat = _liunian_cat(bazi, shi_shen, dy_shishen, fp_name, fp_stars, fp_fu, has_lu, has_ji, score, xi_set, ji_set, weak_elem, organ);
+      var mech = _liunian_mechanism(bazi, { gz: gz, shi_shen: shi_shen, dayun_gz: dy_gz || "—", dayun_shishen: dy_shishen });
+      var km = _liunian_key_months(bazi, { gz: gz, dayun_gz: dy_gz });
       var longParts = [gr[2]];
       longParts.push("流年重点在「" + fp_name + "」宫" + (fp_stars.length ? ("，主星" + fp_stars.join("") + "；") : "（空宫借对宫）；"));
       if (has_lu || has_ji) longParts.push("四化" + (has_lu ? "禄" : "") + (has_ji ? "忌" : "") + "落此，" + (has_lu ? "宜顺势借力、主动作为" : "宜谨慎规划、明算账防反复") + "。");
@@ -731,7 +881,7 @@
         year: y, gz: gz, nayin: nayin, age: age, shi_shen: shi_shen, dayun_gz: dy_gz || "—", dayun_step: dy_step,
         dayun_shishen: dy_shishen, flow_palace: fp_name, flow_palace_zhi: y_zhi,
         flow_stars: fp_stars, flow_fu_stars: fp_fu, sihua: sihua_out, sihua_hit: sihua_hit,
-        score: Math.round(score * 100) / 100, grade: gr[0], cls: gr[1], advice: gr[2], advice_long: advice_long, advice_cat: cat, summary: summary, is_current: y === now_year
+        score: Math.round(score * 100) / 100, grade: gr[0], cls: gr[1], advice: gr[2], advice_long: advice_long, advice_cat: cat, summary: summary, mechanism: mech, key_months: km, is_current: y === now_year
       });
     }
     return { rows: rows, trend: rows.filter(function (r) { return r.is_current; })[0].summary, now_year: now_year };
@@ -866,6 +1016,9 @@
     var tb = compute_tieban(b, z);
     var cv = cross_validate(b, z, yj, tb);
     var liu = compute_liunian(b, z, solar);
+    var mingge = _mingge_zonglun(b, yj, cv);
+    var yongshen = _yongshen_map(b, mingge);
+    var dayun_detail = _dayun_detail(b, solar.getFullYear());
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
     var radar_wuxing = radar_svg(ELEMENTS, ELEMENTS.map(function (e) { return b.element_count[e]; }), { title: "五行分布", max: 8 });
@@ -878,7 +1031,8 @@
       birth_input: { year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace },
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
       liunian: liu, ziwei_svg: ziwei_svg, fortune_svg: fortune_svg, radar_wuxing: radar_wuxing,
-      radar_shi_shen: radar_shi_shen, liunian_sihua: liunian_sihua, elem_data: elem_data
+      radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, elem_data: elem_data,
+      mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail
     };
   }
 

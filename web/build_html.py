@@ -261,6 +261,33 @@ TEMPLATE = r"""<!DOCTYPE html>
     tb.tiaowen.forEach(function(t){ H.push('<tr><td>'+esc(t.dimension)+'</td><td class="pillar" style="font-size:16px">'+esc(t.number)+'</td><td style="text-align:left">'+esc(t.text)+'</td><td style="text-align:left;color:var(--muted)">'+esc(t.verify)+'</td></tr>'); });
     H.push('</table></div>');
 
+    // 命格综合论断（四体系归一）· 用神指引
+    H.push('<div class="card"><h2>命格综合论断 · 用神指引（四体系归一）</h2>');
+    var mg = ctx.mingge;
+    H.push('<div class="grade-banner grade-mid" style="text-align:left;font-size:14px;font-weight:500;line-height:1.95;color:var(--ink)">' + esc(mg.paragraph) + '</div>');
+    H.push('<div class="kv" style="margin-top:10px">');
+    H.push('<span class="k">日主：</span><span class="v">' + b.day_master + '（' + b.day_element + '）' + b.strength + '</span>');
+    H.push('<span class="k">喜用神：</span><span class="v" style="color:var(--green)">' + esc(mg.xi_text) + '</span>');
+    H.push('<span class="k">忌神：</span><span class="v" style="color:var(--red)">' + esc(mg.ji_text) + '</span>');
+    H.push('<span class="k">格局：</span><span class="v">' + esc(mg.pattern) + '</span></div>');
+    H.push('<h3>用神人生映射（方位 / 行业 / 助运色 / 调候）</h3>');
+    H.push('<table><tr><th>用神五行</th><th>利方位</th><th>行业倾向</th><th>助运色</th><th>日常调候</th></tr>');
+    ctx.yongshen.rows.forEach(function (r) {
+      H.push('<tr><td><b>' + esc(r.element) + '</b></td><td>' + esc(r.dir) + '</td><td style="text-align:left">' + esc(r.ind) + '</td><td>' + esc(r.col) + '</td><td style="text-align:left">' + esc(r.tiao) + '</td></tr>');
+    });
+    H.push('</table>');
+    H.push('<details class="yearadv" style="margin-top:10px"><summary>推算依据（关键原始数据，供复核）</summary><div class="cat">');
+    H.push('<div><b>四柱：</b>' + gz(fp.year.gz) + ' ' + gz(fp.month.gz) + ' ' + gz(fp.day.gz) + ' ' + gz(fp.hour.gz) + '</div>');
+    H.push('<div><b>五行分布：</b>' + ML.C.ELEMENTS.map(function (e) { return e + ' ' + b.element_count[e]; }).join('、') + '</div>');
+    H.push('<div><b>日主旺衰：</b>' + b.strength + '（生扶 ' + b.support + ' / 克泄 ' + b.drain + '）｜起运 ' + b.dayun_start_age + ' 岁</div>');
+    H.push('<div><b>紫微命宫主星：</b>' + esc(z.main_star) + '｜生年四化 禄' + z.sihua["禄"] + ' 权' + z.sihua["权"] + ' 科' + z.sihua["科"] + ' 忌' + z.sihua["忌"] + '</div>');
+    H.push('<div><b>周易：</b>本卦 ' + esc(yj.ben_gua) + ' · 变卦 ' + esc(yj.bian_gua) + ' · 动爻第' + yj.dong_yao + '爻</div>');
+    H.push('<div><b>铁板考时数：</b>' + tb.tiaowen.map(function (t) { return t.dimension + t.number; }).join('、') + '</div>');
+    H.push('<div><b>交叉验证：</b>高一致 ' + cv.cons_counts["高一致"] + ' · 中一致 ' + cv.cons_counts["中一致"] + ' · 分歧 ' + cv.cons_counts["分歧"] + '</div>');
+    H.push('</div></details>');
+    H.push('<div class="note">命格论断由四体系原始信号归纳而成，供自我认知与研究参考，非宿命判定。</div>');
+    H.push('</div>');
+
     // 流年
     H.push('<div class="card"><h2>六、流年详批（'+liu.rows[0].year+'–'+liu.rows[liu.rows.length-1].year+'）</h2>');
     H.push('<div class="svgbox">'+ctx.liunian_sihua+'<div class="note">流年命宫四化盘（禄/权/科/忌 落宫）</div></div>');
@@ -280,6 +307,10 @@ TEMPLATE = r"""<!DOCTYPE html>
       [["事业", "事业"], ["财运", "财运"], ["人际", "人际"], ["健康", "健康"], ["时机", "时机"]].forEach(function (kv) {
         if (cat[kv[0]]) H.push('<div><b>' + kv[1] + '：</b>' + esc(cat[kv[0]]) + '</div>');
       });
+      if (r.mechanism) H.push('<div style="margin-top:4px"><b>机理：</b>' + esc(r.mechanism) + '</div>');
+      var km = r.key_months || {};
+      if (km.favor && km.favor.length) H.push('<div><b>✅ 宜把握月份：</b>' + esc(km.favor.join('；')) + '</div>');
+      if (km.watch && km.watch.length) H.push('<div><b>⚠ 宜谨慎月份：</b>' + esc(km.watch.join('；')) + '</div>');
       H.push('</div></details>');
     });
     H.push('<div class="actions"><button class="btn ghost" id="btnCSV">导出多年运势 CSV</button>');
@@ -336,6 +367,11 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('<h3>大运阶段策略</h3><table><tr><th>年龄段</th><th>大运</th><th>阶段建议</th></tr>');
     lg.by_phase.forEach(function (p) {
       H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.tip) + '</td></tr>');
+    });
+    H.push('</table>');
+    H.push('<h3>大运阶段详批（主题 · 关键转折年）</h3><table><tr><th>年龄段</th><th>大运</th><th>阶段主题</th><th>关键转折年</th><th>阶段建议</th></tr>');
+    ctx.dayun_detail.forEach(function (p) {
+      H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.theme) + '</td><td style="text-align:left">' + esc(p.turning) + '</td><td style="text-align:left">' + esc(p.tip) + '</td></tr>');
     });
     H.push('</table>');
     H.push('<div class="note">以上为基于四体系交叉验证的「自我认知与阶段参考」，并非宿命判定；重大人生决策请结合自身实际与现实反馈。</div>');

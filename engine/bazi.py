@@ -117,6 +117,7 @@ def compute_bazi(birth: datetime.datetime, gender: str) -> dict:
         },
         "day_master": day_gan,
         "day_element": day_elem,
+        "birth_year": birth.year,
         "ten_gods": shi_shen,
         "element_count": element_count,
         "strength": strength,

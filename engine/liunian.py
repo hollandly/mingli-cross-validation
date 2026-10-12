@@ -16,15 +16,109 @@ SIHUA_JI = {"禄", "权", "科"}
 SIHUA_XIONG = {"忌"}
 
 
-def _xi_ji_sets(strength: str):
-    """根据日主强弱返回(喜神集, 忌神集)。中和时喜=空、忌=空（仅看紫微）。"""
+def _chong(a, b):
+    return (a == "子" and b == "午") or (a == "午" and b == "子") or \
+           (a == "丑" and b == "未") or (a == "未" and b == "丑") or \
+           (a == "寅" and b == "申") or (a == "申" and b == "寅") or \
+           (a == "卯" and b == "酉") or (a == "酉" and b == "卯") or \
+           (a == "辰" and b == "戌") or (a == "戌" and b == "辰") or \
+           (a == "巳" and b == "亥") or (a == "亥" and b == "巳")
+
+
+def _he6(a, b):
+    return (a == "子" and b == "丑") or (a == "丑" and b == "子") or \
+           (a == "寅" and b == "亥") or (a == "亥" and b == "寅") or \
+           (a == "卯" and b == "戌") or (a == "戌" and b == "卯") or \
+           (a == "辰" and b == "酉") or (a == "酉" and b == "辰") or \
+           (a == "巳" and b == "申") or (a == "申" and b == "巳") or \
+           (a == "午" and b == "未") or (a == "未" and b == "午")
+
+
+def _tg_elem(de, g):
+    """十神 -> 五行。"""
+    if g in ("比肩", "劫财"):
+        return de
+    if g in ("正印", "偏印"):
+        for e in C.ELEMENTS:
+            if C.SHENG.get(e) == de:
+                return e
+        return None
+    if g in ("食神", "伤官"):
+        return C.SHENG.get(de)
+    if g in ("正财", "偏财"):
+        return C.KE.get(de)
+    if g in ("正官", "七杀"):
+        for e in C.ELEMENTS:
+            if C.KE.get(e) == de:
+                return e
+        return None
+    return None
+
+
+def _xi_ji_sets(bazi: dict):
+    """根据日主强弱返回(喜神集, 忌神集)。中和时按全局最旺五行判断偏势，给出可调喜用。"""
+    strength = bazi["strength"]
+    de = bazi["day_element"]
+    ec = bazi["element_count"]
     ke_xie_hao = {"正官", "七杀", "食神", "伤官", "正财", "偏财"}   # 克泄耗
     sheng_fu = {"比肩", "劫财", "正印", "偏印"}                       # 生扶
     if strength == "身旺":
         return ke_xie_hao, sheng_fu
     if strength == "身弱":
         return sheng_fu, ke_xie_hao
-    return set(), set()  # 中和：十神不作喜忌判定
+    # 中和：依全局最旺五行判断偏势
+    top = max(ec, key=ec.get)
+    sheng_elems = {de}
+    for e in C.ELEMENTS:
+        if C.SHENG.get(e) == de:
+            sheng_elems.add(e)
+    if top in sheng_elems:
+        return ke_xie_hao, sheng_fu
+    return sheng_fu, ke_xie_hao
+
+
+def _liunian_mechanism(bazi: dict, row: dict) -> str:
+    """流年机理：流年干支如何作用于日主/大运/命局。"""
+    day_gan = bazi["day_master"]
+    day_elem = bazi["day_element"]
+    y_gan, y_zhi = row["gz"][0], row["gz"][1]
+    rel = row["shi_shen"]
+    rel_txt = {
+        "正官": "约束规范，主责任与名位", "七杀": "克制挑战，主压力与变动",
+        "正印": "生扶荫护，主学习与贵人", "偏印": "偏助暗养，主钻研与孤独",
+        "食神": "泄秀生财，主才艺与安逸", "伤官": "发泄外露，主表达与是非",
+        "正财": "我克之财，主稳定收入", "偏财": "流动之财，主机遇与风险",
+        "比肩": "同辈分力，主协作与竞争", "劫财": "分夺之象，主破耗与争夺",
+    }.get(rel, "中性平气")
+    s = ("行「%s」大运（%s）" % (row["dayun_gz"], row["dayun_shishen"])) if row["dayun_gz"] != "—" else "尚未起运（依本命局）"
+    mech = "流年「%s」，天干「%s」为日主「%s（%s）」之「%s」——%s；%s。" % (row["gz"], y_gan, day_gan, day_elem, rel, rel_txt, s)
+    day_zhi = bazi["four_pillars"]["day"]["gz"][1]
+    month_zhi = bazi["four_pillars"]["month"]["gz"][1]
+    if _chong(y_zhi, day_zhi):
+        note = "流年支「%s」冲日支「%s」，年内个人/婚姻/健康层面易有波动，宜稳" % (y_zhi, day_zhi)
+    elif _chong(y_zhi, month_zhi):
+        note = "流年支「%s」冲月令「%s」，环境与事业平台易生变动" % (y_zhi, month_zhi)
+    elif _he6(y_zhi, day_zhi):
+        note = "流年支「%s」合日支「%s」，自身与人际气场趋于和合" % (y_zhi, day_zhi)
+    else:
+        note = "流年支「%s」与命局无强冲合，顺势而为即可" % y_zhi
+    return mech + note + "。"
+
+
+def _liunian_key_months(bazi: dict, row: dict) -> dict:
+    """流年关键月份：流月地支冲/合 流年支、日支、大运支。"""
+    y_zhi = row["gz"][1]
+    day_zhi = bazi["four_pillars"]["day"]["gz"][1]
+    dy_zhi = row["dayun_gz"][1] if row["dayun_gz"] != "—" else None
+    start_gan_idx = {"甲": 2, "己": 2, "乙": 4, "庚": 4, "丙": 6, "辛": 6, "丁": 8, "壬": 8, "戊": 0, "癸": 0}[row["gz"][0]]
+    watch, favor = [], []
+    for m in range(1, 13):
+        mz = C.ZHI[(2 + (m - 1)) % 12]
+        if _chong(mz, y_zhi) or (dy_zhi and _chong(mz, dy_zhi)) or _chong(mz, day_zhi):
+            watch.append("%d月（流月「%s」冲动）" % (m, mz))
+        elif _he6(mz, y_zhi):
+            favor.append("%d月（流月「%s」合流年，气场和合）" % (m, mz))
+    return {"watch": watch[:3], "favor": favor[:3]}
 
 
 def _score_to_grade(score: float):
@@ -117,7 +211,7 @@ def compute_liunian(bazi: dict, ziwei: dict, birth: datetime.datetime,
                     span_back: int = 2, span_fwd: int = 8) -> dict:
     """返回流年详批列表。birth 用于算虚岁。"""
     day_gan = bazi["day_master"]
-    xi_set, ji_set = _xi_ji_sets(bazi["strength"])
+    xi_set, ji_set = _xi_ji_sets(bazi)
     now_year = datetime.date.today().year
     birth_year = birth.year
     palaces = ziwei["palaces"]
@@ -214,6 +308,11 @@ def compute_liunian(bazi: dict, ziwei: dict, birth: datetime.datetime,
             parts.append(f"流年四化{'、'.join(sihua_hit)}落本宫")
         summary = "；".join(parts) + f"。{advice}。"
 
+        # 流年机理 + 关键月份（深度字段，与前端一致）
+        mech = _liunian_mechanism(bazi, {"gz": gz, "shi_shen": shi_shen,
+                                         "dayun_gz": dy_gz or "—", "dayun_shishen": dy_shishen})
+        km = _liunian_key_months(bazi, {"gz": gz, "dayun_gz": dy_gz})
+
         rows.append({
             "year": y, "gz": gz, "nayin": nayin, "age": age,
             "shi_shen": shi_shen, "dayun_gz": dy_gz or "—", "dayun_step": dy_step,
@@ -224,7 +323,7 @@ def compute_liunian(bazi: dict, ziwei: dict, birth: datetime.datetime,
             "sihua_hit": sihua_hit,
             "score": round(score, 2), "grade": grade, "cls": cls,
             "advice": advice, "advice_long": advice_long, "advice_cat": cat, "summary": summary,
-            "is_current": y == now_year,
+            "mechanism": mech, "key_months": km, "is_current": y == now_year,
         })
 
     # 近三年趋势短语（供交叉验证/结论引用）
