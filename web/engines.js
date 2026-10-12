@@ -999,7 +999,7 @@
   }
 
   // ============ 顶层分析 ============
-  function analyze(y, mo, d, h, mi, gender, birthplace) {
+  function analyze(y, mo, d, h, mi, gender, birthplace, meta) {
     var lon = CITY_LONGITUDE[birthplace] != null ? CITY_LONGITUDE[birthplace] : 120.0;
     var g = correct_to_solar(y, mo, d, h, mi, lon);
     var solar = g.solar;
@@ -1028,7 +1028,14 @@
     var liunian_sihua = liunian_sihua_svg(liu);
     var elem_data = ELEMENTS.map(function (e) { return { name: e, value: b.element_count[e], color: ELEMENT_COLOR[e] }; });
     return {
-      birth_input: { year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace },
+      birth_input: meta && meta.calendar
+        ? {
+            calendar: meta.calendar,
+            year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace,
+            ly: meta.ly, lmo: meta.lmo, ld: meta.ld, lleap: meta.lleap, lshichen: meta.lshichen,
+            sy: meta.sy, smo: meta.smo, sd: meta.sd, sh: meta.sh, smi: meta.smi
+          }
+        : { calendar: "阳历", year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace },
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
       liunian: liu, ziwei_svg: ziwei_svg, fortune_svg: fortune_svg, radar_wuxing: radar_wuxing,
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, elem_data: elem_data,

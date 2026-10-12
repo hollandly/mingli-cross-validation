@@ -80,6 +80,13 @@ TEMPLATE = r"""<!DOCTYPE html>
   .chip.bad{background:#f7e2dc;border-color:#e8bfb0;color:#a64a36;}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px;}
   .err{background:#fde7e2;color:#b5402f;border:1px solid #e8b3a6;padding:10px;border-radius:8px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .seg button{border:none;background:var(--paper2);color:var(--muted);padding:8px 20px;font-size:14px;cursor:pointer;letter-spacing:1px;}
+  .seg button.active{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#fff;font-weight:600;}
+  .seg button:not(:last-child){border-right:1px solid var(--line);}
+  .calhint{font-size:12px;color:var(--muted);margin-top:6px;display:block;line-height:1.6;}
+  .leapbox{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding-top:6px;}
+  .leapbox input{width:auto;transform:scale(1.15);}
   .tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0;}
   .btn.sm{padding:5px 12px;font-size:12px;margin:0;letter-spacing:0;}
   .saved-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);}
@@ -127,12 +134,23 @@ TEMPLATE = r"""<!DOCTYPE html>
   <!-- 录入表单 -->
   <div class="card" id="formCard">
     <h2>录入出生信息</h2>
+    <div class="field" style="grid-column:1/-1">
+      <label>历法（默认农历，更贴合传统生辰报法）</label>
+      <div class="seg" id="f_cal">
+        <button type="button" data-cal="农历" class="active">农历</button>
+        <button type="button" data-cal="阳历">阳历</button>
+      </div>
+      <span class="calhint" id="calHint">中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。</span>
+    </div>
     <div class="form-grid">
-      <div class="field"><label>出生年份（阳历）</label><select id="f_year"></select></div>
-      <div class="field"><label>月份</label><select id="f_month"></select></div>
-      <div class="field"><label>日期</label><select id="f_day"></select></div>
-      <div class="field"><label>出生时（24小时制）</label><select id="f_hour"></select></div>
+      <div class="field"><label id="lbl_year">出生年份（农历）</label><select id="f_year"></select></div>
+      <div class="field"><label id="lbl_month">月份（农历）</label><select id="f_month"></select></div>
+      <div class="field"><label id="lbl_day">日期（农历）</label><select id="f_day"></select></div>
+      <div class="field" id="wrap_shichen"><label>出生时辰</label><select id="f_shichen"></select></div>
+      <div class="field hidden" id="wrap_hour"><label>出生时（24小时制）</label><select id="f_hour"></select></div>
       <div class="field"><label>分钟</label><select id="f_minute"></select></div>
+      <div class="field hidden" id="wrap_leap"><label>是否闰月</label>
+        <div class="leapbox"><input type="checkbox" id="f_leap"><label for="f_leap" style="margin:0">出生在闰月（如闰四月）</label></div></div>
       <div class="field"><label>性别</label>
         <select id="f_gender"><option value="男">男</option><option value="女">女</option></select></div>
       <div class="field"><label>出生地（用于真太阳时校正）</label><select id="f_city"></select></div>
@@ -140,7 +158,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="actions">
       <button class="btn" id="btnRun">生成命理报告</button>
       <button class="btn ghost" id="btnDemo">看示例</button>
-      <span class="note">提示：出生地越精确，真太阳时校正越准。系统会自动校正「真太阳时」后定四柱。</span>
+      <span class="note">提示：出生地越精确，真太阳时校正越准。农历生日请确认是否闰月，以免影响换算。</span>
     </div>
     <div id="errBox"></div>
   </div>
@@ -169,19 +187,51 @@ TEMPLATE = r"""<!DOCTYPE html>
 (function(){
   "use strict";
   var ML = window.ML;
+  var ZH = ["正月","二月","三月","四月","五月","六月","七月","八月","九月","十月","冬月","腊月"];
+  var SHICHEN = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  var SHICHEN_HOUR = {"子":0,"丑":2,"寅":4,"卯":6,"辰":8,"巳":10,"午":12,"未":14,"申":16,"酉":18,"戌":20,"亥":22};
+  var calMode = "农历";
   // ---- 初始化表单 ----
   function fill(sel, items, val){ var el=document.getElementById(sel); items.forEach(function(it){
     var o=document.createElement("option"); o.value=it.v!=null?it.v:it; o.text=it.t!=null?it.t:it;
     if(val!=null && o.value===String(val)) o.selected=true; el.appendChild(o);});}
   (function(){
     var yrs=[]; for(var y=1925;y<=new Date().getFullYear();y++) yrs.push({v:y,t:y+"年"}); fill("f_year",yrs,1990);
-    var mos=[]; for(var m=1;m<=12;m++) mos.push({v:m,t:m+"月"}); fill("f_month",mos,5);
-    var ds=[]; for(var d=1;d<=31;d++) ds.push({v:d,t:d+"日"}); fill("f_day",ds,20);
+    var ds=[]; for(var d=1;d<=31;d++) ds.push({v:d,t:d+"日"}); fill("f_day",ds,27);
     var hs=[]; for(var h=0;h<24;h++) hs.push({v:h,t:(h<10?"0"+h:h)+"时"}); fill("f_hour",hs,12);
     var mis=[]; for(var mi=0;mi<60;mi+=5) mis.push({v:mi,t:(mi<10?"0"+mi:mi)+"分"}); fill("f_minute",mis,0);
+    var shs=[]; for(var i=0;i<12;i++){ var sc=SHICHEN[i]; shs.push({v:sc,t:sc+"时"}); } fill("f_shichen",shs,"午");
     var cities=Object.keys(ML.C.CITY_LONGITUDE).map(function(c){return {v:c,t:c};});
     fill("f_city",cities,"北京");
+    fillMonth(true);
+    document.getElementById("f_month").value=4;
   })();
+
+  function fillMonth(lunar){
+    var sel=document.getElementById("f_month"); sel.innerHTML="";
+    var mos=[]; for(var m=1;m<=12;m++) mos.push({v:m,t:lunar?ZH[m-1]:(m+"月")}); fill("f_month",mos,4);
+  }
+  function applyCalMode(){
+    var lunar = calMode==="农历";
+    document.getElementById("wrap_shichen").classList.toggle("hidden", !lunar);
+    document.getElementById("wrap_hour").classList.toggle("hidden", lunar);
+    document.getElementById("wrap_leap").classList.toggle("hidden", !lunar);
+    document.getElementById("lbl_year").textContent = lunar ? "出生年份（农历）" : "出生年份（阳历）";
+    document.getElementById("lbl_month").textContent = lunar ? "月份（农历）" : "月份（阳历）";
+    document.getElementById("lbl_day").textContent = lunar ? "日期（农历）" : "日期（阳历）";
+    fillMonth(lunar);
+    document.getElementById("calHint").textContent = lunar
+      ? "中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。"
+      : "系统将直接按阳历生日校正真太阳时后定四柱。";
+  }
+  document.querySelectorAll("#f_cal button").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      calMode = btn.getAttribute("data-cal");
+      document.querySelectorAll("#f_cal button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+      applyCalMode();
+    });
+  });
+  applyCalMode();
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
   function gz(g){ return g[0]+g[1]; }
@@ -193,7 +243,14 @@ TEMPLATE = r"""<!DOCTYPE html>
     var H=[];
     H.push('<div class="card"><h2>一、基本信息与真太阳时校正</h2>');
     H.push('<div class="kv">');
-    H.push('<span class="k">录入：</span><span class="v">'+ctx.birth_input.year+'年'+ctx.birth_input.month+'月'+ctx.birth_input.day+'日 '+ctx.birth_input.hour+'时'+ctx.birth_input.minute+'分 · '+ctx.birth_input.gender+' · '+esc(ctx.birth_input.birthplace)+'</span>');
+    var bi=ctx.birth_input;
+    if(bi.calendar==="农历"){
+      H.push('<span class="k">录入（农历）：</span><span class="v">'+bi.ly+'年 '+ZH[bi.lmo-1]+(bi.lleap?"（闰）":"")+' '+bi.ld+'日 '+bi.lshichen+' · '+bi.gender+' · '+esc(bi.birthplace)+'</span>');
+      H.push('</div><div class="kv">');
+      H.push('<span class="k">对应阳历：</span><span class="v">'+bi.sy+'年'+bi.smo+'月'+bi.sd+'日 '+bi.sh+'时'+bi.smi+'分</span>');
+    } else {
+      H.push('<span class="k">录入（阳历）：</span><span class="v">'+bi.year+'年'+bi.month+'月'+bi.day+'日 '+bi.hour+'时'+bi.minute+'分 · '+bi.gender+' · '+esc(bi.birthplace)+'</span>');
+    }
     H.push('</div>');
     H.push('<div class="kv">');
     H.push('<span class="k">真太阳时校正：</span><span class="v">'+geo.shichen_before+' → '+geo.shichen_after+(geo.shichen_changed?'（<b style="color:var(--red)">时辰已变，按校正后定盘</b>':'（时辰不变）')+'</span>');
@@ -412,13 +469,38 @@ TEMPLATE = r"""<!DOCTYPE html>
   document.getElementById("btnRun").addEventListener("click",function(){
     var err=document.getElementById("errBox"); err.innerHTML="";
     try{
-      var y=+document.getElementById("f_year").value, mo=+document.getElementById("f_month").value,
-          d=+document.getElementById("f_day").value, h=+document.getElementById("f_hour").value,
-          mi=+document.getElementById("f_minute").value,
-          gender=document.getElementById("f_gender").value, city=document.getElementById("f_city").value;
-      var maxd=new Date(y,mo,0).getDate();
-      if(d>maxd) throw new Error(mo+"月最多"+maxd+"天，请重新选择日期。");
-      var ctx=ML.analyze(y,mo,d,h,mi,gender,city);
+      var gender=document.getElementById("f_gender").value, city=document.getElementById("f_city").value;
+      var meta=null, sy,smo,sd,sh,smi;
+      if(calMode==="农历"){
+        var ly=+document.getElementById("f_year").value;
+        var lmo=+document.getElementById("f_month").value;
+        var ld=+document.getElementById("f_day").value;
+        var lleap=document.getElementById("f_leap").checked;
+        var lshichen=document.getElementById("f_shichen").value; // 如 "午"
+        var mi=+document.getElementById("f_minute").value;
+        var hour=SHICHEN_HOUR[lshichen];
+        var lm = lleap ? -lmo : lmo;
+        var S;
+        try{
+          S = Lunar.fromYmdHms(ly, lm, ld, hour, mi, 0).getSolar();
+        }catch(e){
+          var msg=e.message||"";
+          if(msg.indexOf("month -")>=0) throw new Error("该农历年（"+ly+"）没有「闰"+ZH[lmo-1]+"」，请取消勾选闰月，或换一个月份。");
+          var md=msg.match(/only (\d+) days/);
+          if(md) throw new Error("农历"+ly+"年"+ZH[lmo-1]+(lleap?"（闰）":"")+"只有"+md[1]+"天，请重新选日期。");
+          throw new Error("农历日期无效："+msg);
+        }
+        sy=S.getYear(); smo=S.getMonth(); sd=S.getDay(); sh=S.getHour(); smi=S.getMinute();
+        meta={ calendar:"农历", ly:ly, lmo:lmo, ld:ld, lleap:lleap, lshichen:lshichen+"时", sy:sy, smo:smo, sd:sd, sh:sh, smi:smi };
+      } else {
+        sy=+document.getElementById("f_year").value; smo=+document.getElementById("f_month").value;
+        sd=+document.getElementById("f_day").value; sh=+document.getElementById("f_hour").value;
+        smi=+document.getElementById("f_minute").value;
+        var maxd=new Date(sy,smo,0).getDate();
+        if(sd>maxd) throw new Error(smo+"月最多"+maxd+"天，请重新选择日期。");
+        meta={ calendar:"阳历", sy:sy, smo:smo, sd:sd, sh:sh, smi:smi };
+      }
+      var ctx=ML.analyze(sy,smo,sd,sh,smi,gender,city,meta);
       render(ctx);
     }catch(e){
       err.innerHTML='<div class="err">出错了：'+esc(e.message||e)+'</div>';
@@ -428,9 +510,16 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   // ---- 示例 ----
   document.getElementById("btnDemo").addEventListener("click",function(){
-    document.getElementById("f_year").value=1990;document.getElementById("f_month").value=5;
-    document.getElementById("f_day").value=20;document.getElementById("f_hour").value=12;
-    document.getElementById("f_minute").value=0;document.getElementById("f_gender").value="男";
+    calMode="农历";
+    document.querySelectorAll("#f_cal button").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-cal")==="农历"); });
+    applyCalMode();
+    document.getElementById("f_year").value=1990;
+    document.getElementById("f_month").value=4;
+    document.getElementById("f_day").value=27;
+    document.getElementById("f_shichen").value="午";
+    document.getElementById("f_leap").checked=false;
+    document.getElementById("f_minute").value=0;
+    document.getElementById("f_gender").value="男";
     document.getElementById("f_city").value="北京";
     document.getElementById("btnRun").click();
   });
@@ -440,8 +529,10 @@ TEMPLATE = r"""<!DOCTYPE html>
   function setSaved(a){ try{localStorage.setItem(LS_KEY,JSON.stringify(a));}catch(e){} }
   function saveCurrent(ctx){
     var inp=ctx.birth_input;
-    var rec={y:inp.year,mo:inp.month,d:inp.day,h:inp.hour,mi:inp.minute,gender:inp.gender,city:inp.birthplace,
-      label:inp.year+"-"+inp.month+"-"+inp.day+" "+inp.gender+" "+inp.birthplace, ts:Date.now()};
+    var label = inp.calendar==="农历"
+      ? (inp.ly+"年"+ZH[inp.lmo-1]+(inp.lleap?"闰":"")+inp.ld+"日"+inp.lshichen+" "+inp.gender+" "+inp.birthplace)
+      : (inp.year+"-"+inp.month+"-"+inp.day+" "+inp.gender+" "+inp.birthplace);
+    var rec={ input: inp, label: label, ts: Date.now() };
     var list=getSaved().filter(function(x){return x.label!==rec.label;});
     list.unshift(rec); if(list.length>20) list=list.slice(0,20);
     setSaved(list); renderSaved();
@@ -458,10 +549,27 @@ TEMPLATE = r"""<!DOCTYPE html>
     }).join("");
     box.querySelectorAll("[data-load]").forEach(function(b){ b.addEventListener("click",function(){
       var r=list[+b.getAttribute("data-load")];
-      document.getElementById("f_year").value=r.y;document.getElementById("f_month").value=r.mo;
-      document.getElementById("f_day").value=r.d;document.getElementById("f_hour").value=r.h;
-      document.getElementById("f_minute").value=r.mi;document.getElementById("f_gender").value=r.gender;
-      document.getElementById("f_city").value=r.city; document.getElementById("btnRun").click();
+      var inp=r.input;
+      calMode = inp.calendar;
+      document.querySelectorAll("#f_cal button").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-cal")===inp.calendar); });
+      applyCalMode();
+      if(inp.calendar==="农历"){
+        document.getElementById("f_year").value=inp.ly;
+        document.getElementById("f_month").value=inp.lmo;
+        document.getElementById("f_day").value=inp.ld;
+        document.getElementById("f_leap").checked=!!inp.lleap;
+        document.getElementById("f_shichen").value=(inp.lshichen||"子").replace("时","");
+        document.getElementById("f_minute").value=inp.smi;
+      } else {
+        document.getElementById("f_year").value=inp.year;
+        document.getElementById("f_month").value=inp.month;
+        document.getElementById("f_day").value=inp.day;
+        document.getElementById("f_hour").value=inp.hour;
+        document.getElementById("f_minute").value=inp.minute;
+      }
+      document.getElementById("f_gender").value=inp.gender;
+      document.getElementById("f_city").value=inp.birthplace;
+      document.getElementById("btnRun").click();
     });});
     box.querySelectorAll("[data-del]").forEach(function(b){ b.addEventListener("click",function(){
       var l=getSaved(); l.splice(+b.getAttribute("data-del"),1); setSaved(l); renderSaved();
