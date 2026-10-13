@@ -97,6 +97,22 @@ TEMPLATE = r"""<!DOCTYPE html>
   .yearadv .cat{margin-top:6px;font-size:13px;line-height:1.78;}
   .yearadv .cat b{color:var(--gold);}
   .saved-label{font-size:13px;flex:1;color:var(--ink);}
+  /* 相学开关 + 采录 */
+  .switch{display:inline-flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;user-select:none;line-height:1.5;}
+  .switch input{width:44px;height:23px;appearance:none;-webkit-appearance:none;background:#d9cdb2;border-radius:20px;position:relative;outline:none;cursor:pointer;transition:.2s;flex:0 0 auto;margin:0;}
+  .switch input:checked{background:linear-gradient(180deg,var(--gold2),var(--gold));}
+  .switch input::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .switch input:checked::after{left:23px;}
+  .cam-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-top:10px;}
+  .cam-row video,.cam-row canvas{max-width:260px;max-height:260px;border:1px solid var(--line);border-radius:10px;background:#222;}
+  .cam-btns{display:flex;flex-direction:column;gap:8px;}
+  .tonebox{margin-top:10px;padding:8px 12px;background:#f3ecd6;border:1px solid #e3d2a3;border-radius:8px;font-size:13px;color:#6b5526;}
+  .obs-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;}
+  @media(max-width:720px){.obs-grid{grid-template-columns:1fr;}}
+  .obs{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0;}
+  .obs legend{font-size:13px;color:var(--gold);font-weight:600;padding:0 6px;}
+  .obs .chkrow{display:flex;flex-wrap:wrap;gap:10px;font-size:13px;}
+  .obs .chkrow label{display:flex;align-items:center;gap:4px;}
   @media(max-width:600px){
     .wrap{padding:14px 10px 60px;}
     header.top h1{font-size:20px;letter-spacing:2px;}
@@ -112,7 +128,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     .kv{font-size:12px;}
   }
   @media print{
-    .disclaimer,.card#formCard,.card#savedCard,.actions,.note,.btn,#errBox{display:none!important;}
+    .disclaimer,.card#formCard,.card#savedCard,.card#xiangCard,.actions,.note,.btn,#errBox{display:none!important;}
     body{background:#fff;color:#000;}
     .wrap{max-width:none;padding:0;}
     .card{box-shadow:none;border:1px solid #ccc;margin:10px 0;page-break-inside:avoid;}
@@ -124,7 +140,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <div class="wrap">
   <header class="top">
     <h1>命理交叉验证系统</h1>
-    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 四维交叉验证</div>
+    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
   </header>
   <div class="disclaimer">
     本系统用于传统文化研究、自我认知与性格参考，<b>不构成任何医疗、投资、法律或人生的决策建议</b>。
@@ -141,6 +157,9 @@ TEMPLATE = r"""<!DOCTYPE html>
         <button type="button" data-cal="阳历">阳历</button>
       </div>
       <span class="calhint" id="calHint">中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。</span>
+    </div>
+    <div class="field" style="grid-column:1/-1">
+      <label class="switch"><input type="checkbox" id="f_xiang"> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
     </div>
     <div class="form-grid">
       <div class="field"><label id="lbl_year">出生年份（农历）</label><select id="f_year"></select></div>
@@ -161,6 +180,60 @@ TEMPLATE = r"""<!DOCTYPE html>
       <span class="note">提示：出生地越精确，真太阳时校正越准。农历生日请确认是否闰月，以免影响换算。</span>
     </div>
     <div id="errBox"></div>
+  </div>
+
+  <!-- 相学采录 -->
+  <div class="card hidden" id="xiangCard">
+    <h2>相学采录（面相 / 手相）</h2>
+    <div class="note">照片仅在本地浏览器处理与绘制，<b>不会上传任何服务器</b>。面相/手相为辅助维度，须与命理四体系互参，结论不单独作断。</div>
+    <div class="field" style="grid-column:1/-1">
+      <label>照片类型（先选类型，再拍照 / 上传）</label>
+      <div class="seg" id="f_xtype">
+        <button type="button" data-xt="face" class="active">面相</button>
+        <button type="button" data-xt="palm">手相</button>
+      </div>
+    </div>
+    <div class="cam-row">
+      <video id="cam" autoplay playsinline muted></video>
+      <canvas id="camCanvas" class="hidden"></canvas>
+      <div class="cam-btns">
+        <button class="btn" id="btnCamOn">开启摄像头</button>
+        <button class="btn ghost" id="btnCap">拍照</button>
+        <label class="btn ghost">上传照片<input type="file" id="fileIn" accept="image/*" hidden></label>
+      </div>
+    </div>
+    <div class="tonebox" id="toneBox">气色判定：待采集（先选「照片类型」，再拍照或上传）</div>
+    <div class="obs-grid">
+      <fieldset class="obs"><legend>面相采录（看着照片勾选）</legend>
+        <div class="field"><label>面型</label><select id="xf_mianxing"><option value="">—</option><option>圆润·水</option><option>方正·金</option><option>修长·木</option><option>上尖下阔·火</option><option>厚宽·土</option></select></div>
+        <div class="field"><label>上停(额)</label><select id="xf_shangting"><option value="">—</option><option>饱满</option><option>平</option><option>窄陷</option></select></div>
+        <div class="field"><label>中停(鼻)</label><select id="xf_zhongting"><option value="">—</option><option>鼻丰</option><option>平</option><option>鼻陷</option></select></div>
+        <div class="field"><label>下停(颔)</label><select id="xf_xiating"><option value="">—</option><option>方圆</option><option>平</option><option>尖削</option></select></div>
+        <div class="field"><label>耳(肾/水)</label><select id="xf_er"><option value="">—</option><option>佳</option><option>平</option><option>弱</option></select></div>
+        <div class="field"><label>眉(肝/木)</label><select id="xf_mei"><option value="">—</option><option>佳</option><option>平</option><option>弱</option></select></div>
+        <div class="field"><label>眼(心/火)</label><select id="xf_yan"><option value="">—</option><option>佳</option><option>平</option><option>弱</option></select></div>
+        <div class="field"><label>鼻(脾/土)</label><select id="xf_bi"><option value="">—</option><option>佳</option><option>平</option><option>弱</option></select></div>
+        <div class="field"><label>口(肺/金)</label><select id="xf_kou"><option value="">—</option><option>佳</option><option>平</option><option>弱</option></select></div>
+        <div class="field"><label>气色(自感)</label><select id="xf_qise"><option value="">—</option><option>红润</option><option>黄润</option><option>青暗</option><option>苍白</option><option>晦暗</option></select></div>
+        <div class="field" style="grid-column:1/-1"><label>痣 / 纹（可多选）</label>
+          <div class="chkrow">
+            <label><input type="checkbox" class="xf_zhiwen" value="奸门(眼尾)痣/纹"> 奸门痣纹</label>
+            <label><input type="checkbox" class="xf_zhiwen" value="法令清晰"> 法令清晰</label>
+            <label><input type="checkbox" class="xf_zhiwen" value="印堂窄/纹乱"> 印堂窄乱</label>
+            <label><input type="checkbox" class="xf_zhiwen" value="人中有痣/陷"> 人中有痣/陷</label>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="obs"><legend>手相采录（看着照片勾选）</legend>
+        <div class="field"><label>掌型</label><select id="xp_palmxing"><option value="">—</option><option>金型·方硬</option><option>木型·修长</option><option>水型·圆润</option><option>火型·尖削</option><option>土型·厚实</option></select></div>
+        <div class="field"><label>生命线</label><select id="xp_life"><option value="">—</option><option>深长清晰</option><option>平</option><option>浅短</option><option>中断/岛纹</option></select></div>
+        <div class="field"><label>智慧线</label><select id="xp_wisdom"><option value="">—</option><option>长而清晰</option><option>平</option><option>短而乱</option></select></div>
+        <div class="field"><label>感情线</label><select id="xp_emotion"><option value="">—</option><option>清晰无杂</option><option>平</option><option>断裂/杂纹多</option></select></div>
+        <div class="field"><label>财运线</label><select id="xp_wealth"><option value="">—</option><option>清晰</option><option>平</option><option>不明显</option></select></div>
+        <div class="field"><label>手指</label><select id="xp_finger"><option value="">—</option><option>修长</option><option>平</option><option>短粗</option></select></div>
+        <div class="field"><label>掌色(自感)</label><select id="xp_pcolor"><option value="">—</option><option>红润</option><option>平</option><option>青白</option></select></div>
+      </fieldset>
+    </div>
   </div>
 
   <!-- 我的排盘 -->
@@ -232,6 +305,88 @@ TEMPLATE = r"""<!DOCTYPE html>
     });
   });
   applyCalMode();
+
+  // ---- 相学：开关 / 摄像头 / 上传 / 像素气色 ----
+  var xiState = { face: null, palm: null };
+  var xiType = "face";
+  document.querySelectorAll("#f_xtype button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      xiType = btn.getAttribute("data-xt");
+      document.querySelectorAll("#f_xtype button").forEach(function (b) { b.classList.toggle("active", b === btn); });
+    });
+  });
+  document.getElementById("f_xiang").addEventListener("change", function () {
+    document.getElementById("xiangCard").classList.toggle("hidden", !this.checked);
+  });
+  function classifyTone(imgData) {
+    var d = imgData.data, n = d.length / 4, r = 0, g = 0, b = 0;
+    for (var i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+    r /= n; g /= n; b /= n;
+    var bright = (r + g + b) / (3 * 255);
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = (mx - mn) / 255;
+    var tone;
+    if (bright < 0.28) tone = "黑·水";
+    else if (bright > 0.82 && sat < 0.14) tone = "白·金";
+    else if (r >= g && r >= b && (r - b) > 18) tone = "红·火";
+    else if (g >= r && g >= b && (g - b) > 18) tone = "青·木";
+    else tone = "黄·土";
+    return { tone: tone, brightness: bright };
+  }
+  function ingestCanvas(canvas) {
+    var s = document.createElement("canvas"); s.width = 40; s.height = 40;
+    s.getContext("2d").drawImage(canvas, 0, 0, 40, 40);
+    var id = s.getContext("2d").getImageData(0, 0, 40, 40);
+    var tone = classifyTone(id);
+    var dataURL = canvas.toDataURL("image/jpeg", 0.72);
+    xiState[xiType] = { px: tone, img: dataURL };
+    var name = xiType === "face" ? "面相" : "手相";
+    document.getElementById("toneBox").innerHTML = "【自动·像素气色】当前「" + name + "」照片：主色偏 <b>" + tone.tone + "</b>，明亮度 " + (tone.brightness * 100).toFixed(0) + "%。如需调整可重新拍照 / 上传。";
+  }
+  var camStream = null;
+  document.getElementById("btnCamOn").addEventListener("click", function () {
+    if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; this.textContent = "开启摄像头"; return; }
+    var v = document.getElementById("cam"), self = this;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("当前浏览器不支持摄像头，请改用「上传照片」。"); return; }
+    navigator.mediaDevices.getUserMedia({ video: true }).then(function (s) {
+      camStream = s; v.srcObject = s; self.textContent = "关闭摄像头";
+    }).catch(function (e) { alert("无法开启摄像头：" + (e.message || e) + "（可改用「上传照片」）"); });
+  });
+  document.getElementById("btnCap").addEventListener("click", function () {
+    var v = document.getElementById("cam"), c = document.getElementById("camCanvas");
+    if (!v.videoWidth) { alert("请先开启摄像头。"); return; }
+    c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0);
+    ingestCanvas(c);
+  });
+  document.getElementById("fileIn").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var img = new Image();
+    img.onload = function () {
+      var c = document.getElementById("camCanvas"); c.width = img.width; c.height = img.height;
+      c.getContext("2d").drawImage(img, 0, 0); ingestCanvas(c);
+    };
+    img.src = URL.createObjectURL(f);
+  });
+  function val(id) { var e = document.getElementById(id); return e ? e.value : ""; }
+  function collectFace() {
+    var zhiwen = []; document.querySelectorAll(".xf_zhiwen:checked").forEach(function (c) { zhiwen.push(c.value); });
+    return {
+      mianxing: val("xf_mianxing"), shangting: val("xf_shangting"), zhongting: val("xf_zhongting"), xiating: val("xf_xiating"),
+      wuguan: { er: val("xf_er"), mei: val("xf_mei"), yan: val("xf_yan"), bi: val("xf_bi"), kou: val("xf_kou") },
+      qise: val("xf_qise"), zhiwen: zhiwen
+    };
+  }
+  function collectPalm() {
+    return { palmxing: val("xp_palmxing"), life: val("xp_life"), wisdom: val("xp_wisdom"), emotion: val("xp_emotion"), wealth: val("xp_wealth"), finger: val("xp_finger"), pcolor: val("xp_pcolor") };
+  }
+  function anyObs(o) {
+    if (!o) return false;
+    for (var k in o) {
+      if (k === "wuguan") { for (var k2 in o.wuguan) if (o.wuguan[k2]) return true; }
+      else if (Array.isArray(o[k])) { if (o[k].length) return true; }
+      else if (o[k]) return true;
+    }
+    return false;
+  }
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
   function gz(g){ return g[0]+g[1]; }
@@ -318,8 +473,35 @@ TEMPLATE = r"""<!DOCTYPE html>
     tb.tiaowen.forEach(function(t){ H.push('<tr><td>'+esc(t.dimension)+'</td><td class="pillar" style="font-size:16px">'+esc(t.number)+'</td><td style="text-align:left">'+esc(t.text)+'</td><td style="text-align:left;color:var(--muted)">'+esc(t.verify)+'</td></tr>'); });
     H.push('</table></div>');
 
-    // 命格综合论断（四体系归一）· 用神指引
-    H.push('<div class="card"><h2>命格综合论断 · 用神指引（四体系归一）</h2>');
+    // 相学分析（面相 / 手相）
+    if(ctx.face || ctx.palm){
+      H.push('<div class="card"><h2>相学分析（面相 / 手相）</h2>');
+      H.push('<div class="note">相学为辅助维度：照片像素气色由浏览器本地自动判定，特征由您观察勾选；结论须与命理体系互参，不单独作断。</div>');
+      H.push('<div class="two">');
+      if(ctx.face){
+        H.push('<div><h3>面相照片</h3>'+(ctx.face.img?'<img src="'+ctx.face.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'，明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+      }
+      if(ctx.palm){
+        H.push('<div><h3>手相照片</h3>'+(ctx.palm.img?'<img src="'+ctx.palm.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'，明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+      }
+      H.push('</div>');
+      var DIMS7=["性格","事业","财运","婚姻","家庭(六亲)","健康","时机运势"];
+      H.push('<h3>面相 / 手相 维度信号（含判定依据）</h3>');
+      H.push('<table><tr><th>维度</th><th>面相判定</th><th>手相判定</th></tr>');
+      DIMS7.forEach(function(dim){
+        var f=ctx.face?ctx.face.signals[dim]:null, p=ctx.palm?ctx.palm.signals[dim]:null;
+        function sigCell(s){ return s?esc(s[0])+' <span class="pill '+(s[1]>=4?'hi':(s[1]>=3?'mid':'lo'))+'">'+s[1].toFixed(1)+'</span>':'—'; }
+        H.push('<tr><td><b>'+dim+'</b></td><td style="text-align:left">'+sigCell(f)+'</td><td style="text-align:left">'+sigCell(p)+'</td></tr>');
+      });
+      H.push('</table>');
+      H.push('<div class="note">面相/手相信号已并入下方「多维交叉验证」，与各命理体系共同判定一致性。</div>');
+      H.push('</div>');
+    }
+
+    // 命格综合论断（各体系归一）· 用神指引
+    H.push('<div class="card"><h2>命格综合论断 · 用神指引（各体系归一）</h2>');
     var mg = ctx.mingge;
     H.push('<div class="grade-banner grade-mid" style="text-align:left;font-size:14px;font-weight:500;line-height:1.95;color:var(--ink)">' + esc(mg.paragraph) + '</div>');
     H.push('<div class="kv" style="margin-top:10px">');
@@ -342,7 +524,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('<div><b>铁板考时数：</b>' + tb.tiaowen.map(function (t) { return t.dimension + t.number; }).join('、') + '</div>');
     H.push('<div><b>交叉验证：</b>高一致 ' + cv.cons_counts["高一致"] + ' · 中一致 ' + cv.cons_counts["中一致"] + ' · 分歧 ' + cv.cons_counts["分歧"] + '</div>');
     H.push('</div></details>');
-    H.push('<div class="note">命格论断由四体系原始信号归纳而成，供自我认知与研究参考，非宿命判定。</div>');
+    H.push('<div class="note">命格论断由命理各体系（含相学若开启）原始信号归纳而成，供自我认知与研究参考，非宿命判定。</div>');
     H.push('</div>');
 
     // 流年
@@ -377,22 +559,22 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('</div>');
 
     // 交叉验证
-    H.push('<div class="card"><h2>七、四维交叉验证与分级结论</h2>');
+    H.push('<div class="card"><h2>七、多维交叉验证与分级结论</h2>');
     var gcls = cv.grade.indexOf("高一致")>=0?"grade-hi":(cv.grade.indexOf("分歧")>=0?"grade-bad":"grade-mid");
     H.push('<div class="grade-banner '+gcls+'">综合一致性：'+esc(cv.grade)+'</div>');
     H.push('<div class="kv" style="margin-top:8px"><span class="k">一致维度统计：</span>');
     H.push('<span class="cons-hi">高一致 '+cv.cons_counts["高一致"]+'</span> ｜ ');
     H.push('<span class="cons-mid">中一致 '+cv.cons_counts["中一致"]+'</span> ｜ ');
     H.push('<span class="cons-bad">分歧 '+cv.cons_counts["分歧"]+'</span></div>');
-    H.push('<table style="margin-top:10px"><tr><th>维度</th><th>四柱八字</th><th>紫微斗数</th><th>周易卦象</th><th>铁板神数</th><th>一致性</th><th>综合评级</th></tr>');
+    var sysCols = ["四柱八字","紫微斗数","周易卦象","铁板神数"];
+    if(ctx.face) sysCols.push("面相");
+    if(ctx.palm) sysCols.push("手相");
+    H.push('<table style="margin-top:10px"><tr><th>维度</th>'+sysCols.map(function(s){return '<th>'+s+'</th>';}).join('')+'<th>一致性</th><th>综合评级</th></tr>');
     cv.matrix.forEach(function(m){
       var consCls = m.consistency==="高一致"?"cons-hi":(m.consistency==="分歧"?"cons-bad":"cons-mid");
       function cell(v){ return v?esc(v[0])+' <span class="pill '+(v[1]>=4?'hi':(v[1]>=3?'mid':'lo'))+'">'+(typeof v[1]==="number"?v[1].toFixed(1):v[1])+'</span>':'—'; }
       H.push('<tr><td><b>'+esc(m.dimension)+'</b></td>');
-      H.push('<td style="text-align:left">'+cell(pick(m,"四柱八字"))+'</td>');
-      H.push('<td style="text-align:left">'+cell(pick(m,"紫微斗数"))+'</td>');
-      H.push('<td style="text-align:left">'+cell(pick(m,"周易卦象"))+'</td>');
-      H.push('<td style="text-align:left">'+cell(pick(m,"铁板神数"))+'</td>');
+      sysCols.forEach(function(s){ H.push('<td style="text-align:left">'+cell(pick(m,s))+'</td>'); });
       H.push('<td class="'+consCls+'">'+esc(m.consistency)+'</td>');
       var dir = m.mean_level>=4?"吉/强":(m.mean_level>=3?"平":"弱/宜守");
       H.push('<td><span class="pill '+(m.mean_level>=4?'hi':(m.mean_level>=3?'mid':'lo'))+'">'+dir+'</span></td></tr>');
@@ -431,7 +613,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.theme) + '</td><td style="text-align:left">' + esc(p.turning) + '</td><td style="text-align:left">' + esc(p.tip) + '</td></tr>');
     });
     H.push('</table>');
-    H.push('<div class="note">以上为基于四体系交叉验证的「自我认知与阶段参考」，并非宿命判定；重大人生决策请结合自身实际与现实反馈。</div>');
+    H.push('<div class="note">以上为基于多维交叉验证的「自我认知与阶段参考」，并非宿命判定；重大人生决策请结合自身实际与现实反馈。</div>');
     H.push('</div>');
 
     var rep=document.getElementById("report");
@@ -499,6 +681,13 @@ TEMPLATE = r"""<!DOCTYPE html>
         var maxd=new Date(sy,smo,0).getDate();
         if(sd>maxd) throw new Error(smo+"月最多"+maxd+"天，请重新选择日期。");
         meta={ calendar:"阳历", sy:sy, smo:smo, sd:sd, sh:sh, smi:smi };
+      }
+      if(document.getElementById("f_xiang").checked){
+        var faceObs=collectFace(), palmObs=collectPalm();
+        var obsAny = anyObs(faceObs) || anyObs(palmObs);
+        if(!xiState.face && !xiState.palm && !obsAny) throw new Error("已开启相学分析，但还没有任何照片或特征。请先拍照/上传至少一张，或在面相/手相采录里勾选特征。");
+        if(xiState.face || anyObs(faceObs)){ meta.faceObs=faceObs; meta.facePx=xiState.face?xiState.face.px:null; meta.faceImg=xiState.face?xiState.face.img:null; }
+        if(xiState.palm || anyObs(palmObs)){ meta.palmObs=palmObs; meta.palmPx=xiState.palm?xiState.palm.px:null; meta.palmImg=xiState.palm?xiState.palm.img:null; }
       }
       var ctx=ML.analyze(sy,smo,sd,sh,smi,gender,city,meta);
       render(ctx);

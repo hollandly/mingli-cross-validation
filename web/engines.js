@@ -518,8 +518,96 @@
     }
     return [res, votes];
   }
+
+  // ============ 相学（面相 / 手相）信号 ============
+  // 五行配属（传统相学框架，透明可考；面相/手相为辅助维度，须与命理四体系互参）
+  var FACE_MIANXING = { "圆润·水": "水", "方正·金": "金", "修长·木": "木", "上尖下阔·火": "火", "厚宽·土": "土" };
+  var PALM_XING = { "金型·方硬": "金", "木型·修长": "木", "水型·圆润": "水", "火型·尖削": "火", "土型·厚实": "土" };
+  var TONE_ELEM = { "红·火": "火", "白·金": "金", "青·木": "木", "黑·水": "水", "黄·土": "土" };
+  var XIANG_ELEM_DIM = { "木": "性格", "火": "时机运势", "土": "财运", "金": "婚姻", "水": "家庭(六亲)" };
+  function _xiang_aggregate(contrib, ev) {
+    var out = {};
+    DIMS.forEach(function (dim) {
+      var s = contrib[dim] || 0;
+      var lvl = _clamp(Math.round(3 + s));
+      var txt = ev.filter(function (e) { return e.dim === dim; }).map(function (e) { return e.t; }).join("；");
+      out[dim] = [txt || "（面相/手相未提供该维度显著特征信号）", lvl];
+    });
+    return out;
+  }
+  function face_signals(obs, px) {
+    var contrib = {}, ev = [];
+    function add(dim, w, t) { contrib[dim] = (contrib[dim] || 0) + w; ev.push({ dim: dim, t: t }); }
+    var mx = FACE_MIANXING[obs.mianxing];
+    if (mx === "水") add("家庭(六亲)", 0.3, "面型圆润属水：主智、主荫，六亲与人缘较润");
+    else if (mx === "金") { add("性格", 0.3, "面型方正属金：性刚决、有原则"); add("婚姻", 0.2, "面型方正属金：义气分明，感情有主见"); }
+    else if (mx === "木") { add("性格", 0.4, "面型修长属木：仁直、上进"); add("事业", 0.2, "面型修长属木：善规划、宜成长型赛道"); }
+    else if (mx === "火") { add("性格", 0.3, "面型上尖下阔属火：热情外露、反应快"); add("时机运势", 0.2, "面型属火：易有显达之机，亦易起伏"); }
+    else if (mx === "土") { add("财运", 0.4, "面型厚宽属土：诚信稳重，财有库"); add("事业", 0.2, "面型厚宽属土：踏实可信，事业靠积累"); }
+    if (obs.shangting === "饱满") { add("家庭(六亲)", 0.4, "上停(额)饱满：早年顺、父荫与智力佳"); add("性格", 0.2, "上停饱满：思虑清明"); }
+    else if (obs.shangting === "窄陷") { add("家庭(六亲)", -0.3, "上停窄陷：早年与父缘或欠顺"); add("性格", -0.2, "上停窄陷：易多思"); }
+    if (obs.zhongting === "鼻丰") { add("事业", 0.4, "中停鼻丰(土)：中年事业有靠、执行力强"); add("财运", 0.3, "鼻为财帛宫丰隆：财源可聚"); }
+    else if (obs.zhongting === "鼻陷") { add("事业", -0.3, "中停鼻陷：中年事业助力弱"); add("财运", -0.3, "鼻陷：守财宜谨慎"); }
+    if (obs.xiating === "方圆") { add("财运", 0.3, "下停(颔腮)方圆：晚景与子禄丰实"); add("家庭(六亲)", 0.2, "下停方圆：晚年家庭安稳"); }
+    else if (obs.xiating === "尖削") { add("财运", -0.3, "下停尖削：晚景财禄宜早蓄"); }
+    var wg = obs.wuguan || {};
+    if (wg.er === "佳") { add("家庭(六亲)", 0.3, "耳(肾/水)轮廓佳：肾气足、祖荫与听力好"); add("健康", 0.2, "耳佳：肾系统平顺"); }
+    else if (wg.er === "弱") { add("家庭(六亲)", -0.3, "耳弱/招风：肾气偏弱，早年间或有耗"); add("健康", -0.2, "耳弱：留意肾/听力"); }
+    if (wg.mei === "佳") { add("性格", 0.2, "眉(肝/木)清秀：性情中和"); add("事业", 0.2, "眉佳：谋略有序"); }
+    else if (wg.mei === "弱") { add("性格", -0.2, "眉杂/逆：性急易躁"); }
+    if (wg.yan === "佳") { add("性格", 0.2, "眼(心/火)有神：心智明亮"); add("时机运势", 0.2, "眼神清亮：时机判断佳"); }
+    else if (wg.yan === "弱") { add("时机运势", -0.2, "眼神黯/无神：临事宜缓、多核再决"); }
+    if (wg.bi === "佳") { add("财运", 0.3, "鼻(脾/土)挺阔：财库丰"); add("事业", 0.2, "鼻佳：中年运稳"); }
+    else if (wg.bi === "弱") { add("财运", -0.3, "鼻弱/露孔：财易漏，宜储蓄"); }
+    if (wg.kou === "佳") { add("婚姻", 0.2, "口(肺/金)端正：言语有度，感情沟通佳"); add("健康", 0.2, "口佳：脾胃纳运好"); }
+    else if (wg.kou === "弱") { add("婚姻", -0.2, "口歪/薄：沟通易生误，感情多体谅"); }
+    if (obs.qise === "红润") { add("时机运势", 0.3, "气色红润：气血畅、时机佳"); add("健康", 0.2, "红润：心气足"); }
+    else if (obs.qise === "黄润") { add("财运", 0.2, "气色黄润(土)：脾胃纳运好、财稳"); add("健康", 0.2, "黄润：土气充"); }
+    else if (obs.qise === "青暗") { add("健康", -0.3, "气色青暗：肝/气机郁，宜疏解"); add("时机运势", -0.2, "青暗：近期宜守"); }
+    else if (obs.qise === "苍白") { add("健康", -0.2, "气色苍白(金过)：肺卫偏弱，防外感"); }
+    else if (obs.qise === "晦暗") { add("时机运势", -0.3, "气色晦暗：运势暂滞，蓄势待时"); }
+    if (px && px.tone && TONE_ELEM[px.tone]) {
+      var pe = TONE_ELEM[px.tone], pdim = XIANG_ELEM_DIM[pe];
+      add(pdim, px.brightness > 0.55 ? 0.6 : 0.3, "【自动·像素气色】照片主色偏" + px.tone + "属" + pe + "行，明亮度" + (px.brightness > 0.55 ? "高" : "中") + "：佐证" + pdim + "之气");
+    }
+    (obs.zhiwen || []).forEach(function (z) {
+      if (z === "奸门(眼尾)痣/纹") add("婚姻", -0.2, "奸门(眼尾)见痣纹：夫妻宫受扰，感情宜多沟通");
+      else if (z === "法令清晰") add("事业", 0.2, "法令清晰：威仪与执行力佳");
+      else if (z === "印堂窄/纹乱") add("性格", -0.2, "印堂窄乱：易忧思，临事缓决");
+      else if (z === "人中有痣/陷") add("家庭(六亲)", -0.2, "人中有痣/陷：子女缘宜留意");
+    });
+    return _xiang_aggregate(contrib, ev);
+  }
+  function palm_signals(obs, px) {
+    var contrib = {}, ev = [];
+    function add(dim, w, t) { contrib[dim] = (contrib[dim] || 0) + w; ev.push({ dim: dim, t: t }); }
+    var px_ = PALM_XING[obs.palmxing];
+    if (px_ === "金") { add("婚姻", 0.3, "掌型方硬属金：果决、感情有边界"); add("性格", 0.2, "金型掌：刚毅"); }
+    else if (px_ === "木") { add("性格", 0.4, "掌型修长属木：仁善、善思"); add("事业", 0.2, "木型掌：宜文职/技艺"); }
+    else if (px_ === "水") { add("家庭(六亲)", 0.3, "掌型圆润属水：聪慧、人缘润"); add("时机运势", 0.2, "水型掌：机变灵活"); }
+    else if (px_ === "火") { add("性格", 0.3, "掌型尖削属火：热情、易起伏"); add("时机运势", 0.2, "火型掌：易有机遇亦易波动"); }
+    else if (px_ === "土") { add("财运", 0.4, "掌型厚实属土：诚信、财有库"); add("事业", 0.2, "土型掌：踏实积累"); }
+    if (obs.life === "深长清晰") add("健康", 0.5, "生命线深长清晰：先天体质与生命力强");
+    else if (obs.life === "浅短") add("健康", -0.4, "生命线浅短：体质偏弱，宜早养、勿透支");
+    else if (obs.life === "中断/岛纹") add("健康", -0.5, "生命线见中断/岛纹：健康有波，定期体检、重大事宜谨慎");
+    if (obs.wisdom === "长而清晰") { add("性格", 0.4, "智慧线长清：思维缜密、善谋"); add("事业", 0.2, "智慧线佳：专业力强"); }
+    else if (obs.wisdom === "短而乱") add("性格", -0.2, "智慧线短乱：思虑易散，重大决策多核");
+    if (obs.emotion === "清晰无杂") add("婚姻", 0.4, "感情线清晰：情感稳定、婚恋顺");
+    else if (obs.emotion === "断裂/杂纹多") add("婚姻", -0.4, "感情线断裂杂：情感波折，宜多沟通、晚婚更稳");
+    if (obs.wealth === "清晰") add("财运", 0.4, "财运线/玉柱纹清晰：财源可聚、有规划");
+    else if (obs.wealth === "不明显") add("财运", -0.2, "财运线不显：财凭技艺与因缘，宜节流");
+    if (obs.finger === "修长") add("性格", 0.2, "手指修长：心细、善艺");
+    else if (obs.finger === "短粗") add("性格", -0.1, "手指短粗：性直、重实干");
+    if (px && px.tone && TONE_ELEM[px.tone]) {
+      var pe = TONE_ELEM[px.tone], pdim = XIANG_ELEM_DIM[pe];
+      add(pdim, px.brightness > 0.55 ? 0.5 : 0.3, "【自动·像素气色】掌色偏" + px.tone + "属" + pe + "行：佐证" + pdim + "之气");
+    }
+    if (obs.pcolor === "红润") { add("健康", 0.2, "掌色红润：气血足"); add("时机运势", 0.2, "掌色红润：时机佳"); }
+    else if (obs.pcolor === "青白") add("健康", -0.2, "掌色青白：气血偏弱，宜调补");
+    return _xiang_aggregate(contrib, ev);
+  }
   // 人生指导总览：综合四体系交叉验证结果，产出分维度建议 + 优势/短板 + 大运阶段策略 + 综合总览
-  function _life_guidance(matrix, bazi, xi_set, ji_set, cons_counts, review_flags) {
+  function _life_guidance(matrix, bazi, xi_set, ji_set, cons_counts, review_flags, nSys) {
     var day_gan = bazi.day_master;
     var strengths = [], cautions = [], dim_tips = {};
     var DIM_ADVICE = {
@@ -534,10 +622,10 @@
     matrix.forEach(function (m) {
       var dir = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
       dim_tips[m.dimension] = DIM_ADVICE[m.dimension] ? DIM_ADVICE[m.dimension](dir) : "参考综合评级顺势而为。";
-      if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：四体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
+      if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：" + (nSys || 4) + "体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
       if (m.consistency === "分歧" || m.mean_level < 3) cautions.push(m.dimension + "：结论分歧或评级偏弱，是容易踩坑的方面——重大决策放慢、以现实反馈校准，别凭感觉冲");
     });
-    if (!strengths.length) strengths.push("四体系整体以「平」为主，没有特别突出的长板，宜在均衡中稳步积累，不必急于求成");
+    if (!strengths.length) strengths.push((nSys || 4) + "体系整体以「平」为主，没有特别突出的长板，宜在均衡中稳步积累，不必急于求成");
     if (!cautions.length) cautions.push("暂无明显短板预警，但「平」也意味着没有躺赢的运气，保持节奏、居安思危即可");
     var phase = [];
     if (bazi.dayun.length) {
@@ -551,20 +639,24 @@
         phase.push({ range: Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + "岁", gz: d.gz, tip: tip });
       });
     }
-    var overall = "综合四体系交叉验证：高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] +
+    var overall = "综合" + (nSys || 4) + "体系交叉验证：高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] +
       " 项。可以重点发力的领域：「" + strengths.join("；") + "」；需要设防、别踩坑的方面：「" + cautions.join("；") + "」。" +
       "人生策略上，你身" + bazi.strength + "，用神宜取" + (bazi.strength === "身弱" ? "印比（学习、合作、稳健托底）" : "食伤财官（表达、务实、进取兑现）") +
       "——喜运的十年主动出击、放大成果，忌运的十年收着点、先把风险敞口降下来。";
     if (review_flags.length) overall += " 另：" + review_flags.join("");
     return { overall: overall, strengths: strengths, cautions: cautions, dimension_tips: dim_tips, by_phase: phase };
   }
-  function cross_validate(bazi, ziwei, yijing, tieban) {
+  function cross_validate(bazi, ziwei, yijing, tieban, face, palm) {
     var bs = bazi_signals(bazi), zs = ziwei_signals(ziwei), ys = yijing_signals(yijing, bazi), ts_v = tieban_signals(tieban);
     var ts = ts_v[0], tieban_votes = ts_v[1];
+    var systems = [["四柱八字", bs], ["紫微斗数", zs], ["周易卦象", ys], ["铁板神数", ts]];
+    if (face) systems.push(["面相", face]);
+    if (palm) systems.push(["手相", palm]);
+    var nSys = systems.length;
     var matrix = [];
     DIMS.forEach(function (dim) {
       var votes = [];
-      [["四柱八字", bs], ["紫微斗数", zs], ["周易卦象", ys], ["铁板神数", ts]].forEach(function (kv) {
+      systems.forEach(function (kv) {
         if (kv[1][dim]) votes.push({ system: kv[0], text: kv[1][dim][0], level: kv[1][dim][1] });
       });
       var levels = votes.map(function (v) { return v.level; });
@@ -576,14 +668,15 @@
     var review_flags = [];
     var bi_jie = bazi.ten_gods.filter(function (g) { return g === "比肩" || g === "劫财"; }).length;
     if (bi_jie >= 2 && tieban_votes["兄弟"]) review_flags.push("八字比劫偏旺而铁板兄弟数偏少，时辰或存疑，建议考时复核。");
+    if (face || palm) review_flags.push("相学（面相/手相）为辅助维度：由照片像素气色自动判定 + 您观察勾选的特征共同得出，结论须与命理" + (nSys - (face ? 1 : 0) - (palm ? 1 : 0)) + "体系互参，不单独作断。");
     var conflicts = matrix.filter(function (m) { return m.consistency === "分歧"; }).map(function (m) { return m.dimension; });
-    if (conflicts.length) review_flags.push("维度「" + conflicts.join("、") + "」四体系结论分歧较大，建议复核。");
+    if (conflicts.length) review_flags.push("维度「" + conflicts.join("、") + "」" + nSys + "体系结论分歧较大，建议复核。");
     var cons_counts = { "高一致": 0, "中一致": 0, "分歧": 0 };
     matrix.forEach(function (m) { cons_counts[m.consistency]++; });
     var grade = cons_counts["分歧"] === 0 && cons_counts["高一致"] >= 4 ? "高一致 · 结论可信度较高"
       : cons_counts["分歧"] === 0 ? "中一致 · 结论可作参考" : "分歧需复核 · 时辰或参数待考证";
     var xi_ji = _xi_ji_sets(bazi), xi_set2 = xi_ji[0], ji_set2 = xi_ji[1];
-    var life = _life_guidance(matrix, bazi, xi_set2, ji_set2, cons_counts, review_flags);
+    var life = _life_guidance(matrix, bazi, xi_set2, ji_set2, cons_counts, review_flags, nSys);
     var conclusions = matrix.map(function (m) {
       var direction = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
       return { dimension: m.dimension, direction: direction, consistency: m.consistency, summary: m.dimension + "：综合评级 " + direction + "（一致性 " + m.consistency + "）。", advice: life.dimension_tips[m.dimension] };
@@ -1014,7 +1107,9 @@
     var z = compute_ziwei(solar.getFullYear(), solar.getMonth() + 1, solar.getDate(), solar.getHours(), solar.getMinutes(), gender);
     var yj = meihua_qigua(b.four_pillars);
     var tb = compute_tieban(b, z);
-    var cv = cross_validate(b, z, yj, tb);
+    var faceSig = (meta && meta.faceObs) ? face_signals(meta.faceObs, meta.facePx) : null;
+    var palmSig = (meta && meta.palmObs) ? palm_signals(meta.palmObs, meta.palmPx) : null;
+    var cv = cross_validate(b, z, yj, tb, faceSig, palmSig);
     var liu = compute_liunian(b, z, solar);
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
@@ -1039,7 +1134,9 @@
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
       liunian: liu, ziwei_svg: ziwei_svg, fortune_svg: fortune_svg, radar_wuxing: radar_wuxing,
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, elem_data: elem_data,
-      mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail
+      mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail,
+      face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
+      palm: palmSig ? { signals: palmSig, obs: meta.palmObs, px: meta.palmPx, img: meta.palmImg } : null
     };
   }
 
@@ -1047,6 +1144,7 @@
     C: { GAN: GAN, ZHI: ZHI, GZ60: GZ60, ELEMENTS: ELEMENTS, ELEMENT_COLOR: ELEMENT_COLOR, CITY_LONGITUDE: CITY_LONGITUDE, SIHUA: SIHUA, TEN_GOD: TEN_GOD, ZIWEI_PALACES: ZIWEI_PALACES },
     analyze: analyze, compute_bazi: compute_bazi, compute_ziwei: compute_ziwei, meihua_qigua: meihua_qigua,
     compute_tieban: compute_tieban, cross_validate: cross_validate, compute_liunian: compute_liunian,
+    face_signals: face_signals, palm_signals: palm_signals,
     build_ziwei_svg: build_ziwei_svg, fortune_trend_svg: fortune_trend_svg, radar_svg: radar_svg, liunian_sihua_svg: liunian_sihua_svg,
     correct_to_solar: correct_to_solar, nayin_name: nayin_name
   };
