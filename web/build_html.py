@@ -632,6 +632,12 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('<div class="window-why">'+esc(ap.rhythm.principle)+'</div>');
     H.push('<h3 class="act-h">自我觉察提示</h3><ul class="tips">');
     ap.self_aware.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
+    if (ap.reflection) {
+      H.push('<h3 class="act-h">按人生阶段的复盘问题' + (ap.reflection.age !== null ? ('（' + esc(ap.reflection.stage) + '）') : '') + '</h3>');
+      H.push('<div class="window-why">' + esc(ap.reflection.note) + '</div>');
+      H.push('<ul class="tips">');
+      (ap.reflection.questions || []).forEach(function(q){ H.push('<li>'+esc(q)+'</li>'); }); H.push('</ul>');
+    }
     H.push('<div class="note">人生决策最终在你手里：本系统帮你「看清局势、少走弯路」，但每一个选择仍由你自己承担与把握。</div>');
     H.push('</div>');
 

@@ -9456,7 +9456,7 @@
 
   // ============ 人生行动指南（用户视角：把多维交叉验证结论翻译成可执行的「避坑手册」）============
   // 目标：用户不只看到一堆术语，而是清楚「当下该进攻还是防守、哪些重大决策今年能碰、该做/别做/留意什么」。
-  function _action_playbook(bazi, cv, liu) {
+  function _action_playbook(bazi, cv, liu, birthYear) {
     function gz2(g) { return g && g.length === 2 ? g[0] + g[1] : "—"; }
     var day_gan = bazi.day_master;
     var xiji = _xi_ji_sets(bazi), xi_set = xiji[0], ji_set = xiji[1];
@@ -9531,6 +9531,17 @@
       decisions.push({ name: "远行 / 搬家", light: light, text: text });
     })();
 
+    // 2.5) 口径打磨：交叉验证存在分歧时，重大金钱/承诺类决策从严（降为红，避免盲动踩坑）
+    var hasConflict = cv.matrix.some(function (m) { return m.consistency === "分歧"; });
+    if (hasConflict) {
+      decisions.forEach(function (d) {
+        if (d.light === "amber" && ["投资 / 理财", "创业 / 副业", "买房 / 大宗消费", "远行 / 搬家"].indexOf(d.name) >= 0) {
+          d.light = "red";
+          d.text += "（注：交叉验证在相关维度存在分歧，重大金钱/承诺类决策从严，先小步试错、以现实反馈校准。）";
+        }
+      });
+    }
+
     // 3) 该做 / 别做 / 留意（按优先级合成）
     var doL = [], dontL = [], watchL = [];
     (cv.life_guidance.strengths || []).slice(0, 2).forEach(function (s) { doL.push(s); });
@@ -9572,11 +9583,57 @@
       "本系统所有结论都是「决策参考 + 自我觉察」而非定数：把交叉验证里高一致的维度当「预警与机会」，把分歧的维度当「需现实验证的假设」。"
     ];
 
+    // 6) 按人生阶段的复盘问题（把术语落成「这个年纪该问自己的事」，让内容更有意义）
+    var nowY = liu.now_year || (new Date().getFullYear());
+    var age = (typeof birthYear === "number" && birthYear > 1900) ? (nowY - birthYear) : null;
+    function _life_stage(a) {
+      if (a === null) return { stage: "通用 · 不分阶段", note: "未填出生年份，下列为通用自省问题。", questions: [
+        "当下是「进攻窗口」还是「防守期」？这一年我把它用在了对的地方吗？",
+        "我最近的重大决定，是顺势而为，还是被情绪或面子推着走？"
+      ] };
+      if (a < 12) return { stage: "未成年 · 家长参考", note: "系统结论供监护人参考，不直接用于儿童自身决策；重在培养与保护。", questions: [
+        "我是否在用比较和焦虑替代对孩子的看见？孩子的节奏与兴趣被尊重了吗？",
+        "我有没有帮孩子建立规律作息、阅读与运动习惯，而不是只盯成绩？"
+      ] };
+      if (a <= 17) return { stage: "少年 · 求学奠基（" + a + "岁）", note: "主线是学习与自我认知，别被同辈比较绑架。", questions: [
+        "我花在「真正喜欢且能长期积累的事」上的时间，够吗？",
+        "遇到挫折时，我是归因自己笨，还是看成一次练习？——后者更走得远。",
+        "今年若处「进攻窗口」，可把精力投向一门特长或关键考试；若处「防守期」，先稳住心态与基础。"
+      ] };
+      if (a <= 24) return { stage: "青年早期 · 初入社会（" + a + "岁）", note: "主线是选方向与攒底盘，别急着证明自己。", questions: [
+        "我选的路，是我想做、还是别人觉得我该做？两者差距越大，越要早想清。",
+        "我有没有在「进攻窗口」里主动争取机会（实习 / 项目 / 人脉），又在「防守期」里默默补短板？",
+        "我是否为自己留了应急金与退路？——年轻最大的底气不是敢冲，是冲错了还能回头。"
+      ] };
+      if (a <= 34) return { stage: "青年后期 · 立业成家关键期（" + a + "岁）", note: "主线是「选择的质量」：职业深耕、关系与资产，一步错代价变大。", questions: [
+        "我最近的跳槽 / 购房 / 婚恋决定，是顺着喜用「顺势」，还是赌一口气？最坏情况兜得住吗？",
+        "我有没有在「进攻窗口」集中资源办大事（晋升 / 成家 / 置业），又在「防守期」压住冲动消费与负债？",
+        "健康与关系是不是被我用「以后再说」无限期推迟了？这两项拖不起。"
+      ] };
+      if (a <= 44) return { stage: "中年爬坡 · 责任峰值（" + a + "岁）", note: "主线是稳健与杠杆管理，避免中年冒进与透支。", questions: [
+        "我的负债与家庭责任，是否超过了「防守期也兜得住」的底线？——中年最大的风险是现金流断。",
+        "我在「进攻窗口」敢争取吗？还是被安逸或怕丢脸绑住，错过了该冲的年份？",
+        "身体预警（体检 / 睡眠 / 情绪）我当回事了吗？中年的「别做」，第一条往往是关于健康。"
+      ] };
+      if (a <= 54) return { stage: "中年后期 · 守成与转型（" + a + "岁）", note: "主线是守住成果、平滑过渡，重传承与身心。", questions: [
+        "我有没有把下半场的事（职业第二曲线 / 资产传承 / 父母赡养）提前布局，而不是等被迫？",
+        "我是不是还在用年轻时的「进攻打法」硬扛，却已不在那个能量窗口里？——该守时要守。",
+        "关系（伴侣 / 子女 / 父母）里，我留出高质量相处的时间了吗？这类账补起来最贵。"
+      ] };
+      return { stage: "渐入成熟期 · 身心与关系（" + a + "岁）", note: "主线是放下执念、重身心与关系质量，把经验变智慧。", questions: [
+        "我还有哪些「非要证明给谁看」的执念，其实早该放下了？",
+        "我的日常是否被健康与喜欢的事填满，而不是被焦虑与比较填满？",
+        "我有没有把这一生的判断与教训，沉淀成可以给后人的东西（不止是钱）？"
+      ] };
+    }
+    var reflection = _life_stage(age);
+    reflection.age = age;
+
     return {
       window: { verdict: win, cls: winCls, why: winWhy },
       decisions: decisions,
       do_list: doL, dont_list: dontL, watch_list: watchL,
-      rhythm: rhythm, self_aware: selfAware
+      rhythm: rhythm, self_aware: selfAware, reflection: reflection
     };
   }
 
@@ -10048,7 +10105,7 @@
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
     var dayun_detail = _dayun_detail(b, solar.getFullYear());
-    var action_playbook = _action_playbook(b, cv, liu);
+    var action_playbook = _action_playbook(b, cv, liu, solar.getFullYear());
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
     var radar_wuxing = radar_svg(ELEMENTS, ELEMENTS.map(function (e) { return b.element_count[e]; }), { title: "五行分布", max: 8 });
@@ -10439,6 +10496,12 @@
     H.push('<div class="window-why">'+esc(ap.rhythm.principle)+'</div>');
     H.push('<h3 class="act-h">自我觉察提示</h3><ul class="tips">');
     ap.self_aware.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
+    if (ap.reflection) {
+      H.push('<h3 class="act-h">按人生阶段的复盘问题' + (ap.reflection.age !== null ? ('（' + esc(ap.reflection.stage) + '）') : '') + '</h3>');
+      H.push('<div class="window-why">' + esc(ap.reflection.note) + '</div>');
+      H.push('<ul class="tips">');
+      (ap.reflection.questions || []).forEach(function(q){ H.push('<li>'+esc(q)+'</li>'); }); H.push('</ul>');
+    }
     H.push('<div class="note">人生决策最终在你手里：本系统帮你「看清局势、少走弯路」，但每一个选择仍由你自己承担与把握。</div>');
     H.push('</div>');
 
