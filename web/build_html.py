@@ -146,6 +146,20 @@ TEMPLATE = r"""<!DOCTYPE html>
   .dec .dt{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6;}
   .lt{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;}
   .lt.green{background:var(--green);} .lt.amber{background:#d9a521;} .lt.red{background:var(--red);}
+  /* 能量节奏 · 精确时间段 */
+  .phase-best{background:linear-gradient(180deg,#fff7e6,#fdeecb);border:1px solid #e9c878;border-radius:12px;padding:12px 14px;margin:6px 0 10px;}
+  .phase-best .pb-t{font-size:15px;font-weight:700;color:#9a6b00;}
+  .phase-best .pb-sub{font-size:12.5px;color:#a9791f;margin:3px 0 6px;}
+  .yr{display:inline-block;border-radius:8px;padding:3px 8px;font-size:12.5px;margin:3px 6px 3px 0;font-weight:600;}
+  .yr.atk{background:#eef6f0;border:1px solid #cfe4d6;color:#1f7a3d;}
+  .yr.def{background:#fbeee9;border:1px solid #eccabf;color:#b83b22;}
+  .tl-title{font-size:12.5px;color:var(--muted);margin:12px 0 6px;}
+  .tl{display:flex;flex-wrap:wrap;gap:7px;}
+  .tl-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:58px;padding:6px 4px;border-radius:9px;font-size:13px;font-weight:700;line-height:1.25;border:1px solid var(--line);background:var(--paper2);}
+  .tl-chip small{font-size:10px;font-weight:400;color:var(--muted);margin-top:2px;}
+  .tl-chip.atk{background:#eef6f0;border-color:#cfe4d6;color:#1f7a3d;}
+  .tl-chip.def{background:#fbeee9;border-color:#eccabf;color:#b83b22;}
+  .tl-chip.mid{background:#fbf3df;border-color:#ecd9a8;color:#9a6b00;}
   @media print{
     .disclaimer,.card#formCard,.card#savedCard,.card#xiangCard,.actions,.note,.btn,#errBox{display:none!important;}
     body{background:#fff;color:#000;}
@@ -178,7 +192,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       <span class="calhint" id="calHint">中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。</span>
     </div>
     <div class="field" style="grid-column:1/-1">
-      <label class="switch"><input type="checkbox" id="f_xiang" checked> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
+      <label class="switch"><input type="checkbox" id="f_xiang"> <span>开启相学分析（面相 / 手相）· 需要时勾选，<b>本地运算、照片不上传</b>（关闭则不占版面）</span></label>
     </div>
     <div class="form-grid">
       <div class="field"><label id="lbl_year">出生年份（农历）</label><select id="f_year"></select></div>
@@ -202,7 +216,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <!-- 相学采录 -->
-  <div class="card" id="xiangCard">
+  <div class="card hidden" id="xiangCard">
     <h2>相学采录（面相 / 手相）</h2>
     <div class="note">照片仅在本地浏览器处理与绘制，<b>不会上传任何服务器</b>。面相/手相为辅助维度，须与命理四体系互参，结论不单独作断。</div>
     <div class="field" style="grid-column:1/-1">
@@ -626,9 +640,37 @@ TEMPLATE = r"""<!DOCTYPE html>
     ap.dont_list.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul></div></div>');
     H.push('<h3 class="act-h" style="color:#b07d2f">⚠ 留意（需现实校准）</h3><ul class="act-list act-watch">');
     ap.watch_list.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
-    H.push('<h3 class="act-h">能量节奏管理（自己看曲线做规划）</h3>');
-    H.push('<div class="kv"><span class="k">下一个进攻窗口：</span><span class="v" style="color:var(--green)">'+esc(ap.rhythm.next_window)+'</span></div>');
-    H.push('<div class="kv"><span class="k">下一个防守期：</span><span class="v" style="color:var(--red)">'+esc(ap.rhythm.next_defend)+'</span></div>');
+    H.push('<h3 class="act-h">能量节奏 · 精确时间段（好年攻 / 坏年守）</h3>');
+    // 最佳发力窗口（核心：最好的对应时间段，精确到年龄+年份区间）
+    if (ap.rhythm.best_phase) {
+      var bp = ap.rhythm.best_phase;
+      var isGood = bp.good;
+      H.push('<div class="phase-best"><div class="pb-t">' + (isGood ? "★ 最佳发力窗口：" : "◐ 后续偏稳窗口：") + esc(bp.age_range) + '（' + esc(bp.year_range) + '）</div>');
+      H.push('<div class="pb-sub">大运「' + esc(bp.gz) + '」· 流年评分均值 ' + bp.avg + (isGood ? "" : "（偏收敛）") + '</div>');
+      H.push('<div class="window-why">' + esc(bp.why) + '</div></div>');
+    } else {
+      H.push('<div class="window-why">未来皆为平 / 守之运，未定位到明显「发力大年」；可结合「流年详批」逐年查看评分起伏，逢平 / 吉年小步推进即可。</div>');
+    }
+    // 当前大运窗口
+    if (ap.rhythm.current_phase) {
+      var cp = ap.rhythm.current_phase;
+      var badge = cp.fav ? '<span class="pill" style="background:var(--green);color:#fff">喜运·宜攻</span>' : (cp.bad ? '<span class="pill" style="background:var(--red);color:#fff">忌运·宜守</span>' : '<span class="pill" style="background:#d9c79a;color:#5a3a12">平运</span>');
+      H.push('<div class="kv"><span class="k">当前大运：</span><span class="v">'+badge+' '+esc(cp.gz)+'（'+esc(cp.age_range)+(cp.year_range?(' · '+esc(cp.year_range)):'')+'）</span></div>');
+      H.push('<div class="window-why">'+esc(cp.tip)+'</div>');
+      if (cp.turning && cp.turning !== "无明显大变动年") H.push('<div class="kv"><span class="k">关键变动年：</span><span class="v">'+esc(cp.turning)+'</span></div>');
+    }
+    // 最近宜进攻 / 宜防守 的年份
+    function fmtYears(arr, cls) {
+      if (!arr.length) return '<span class="v" style="color:var(--muted)">未来数年无明显此类年份</span>';
+      return arr.map(function(x){ return '<span class="yr '+cls+'">'+x.year+'年（'+x.age+'岁·'+x.gz+'·'+x.score+'）</span>'; }).join(' ');
+    }
+    H.push('<div class="kv"><span class="k">最近宜进攻：</span><span class="v">'+fmtYears(ap.rhythm.next_attack, 'atk')+'</span></div>');
+    H.push('<div class="kv"><span class="k">最近宜防守：</span><span class="v">'+fmtYears(ap.rhythm.next_defend, 'def')+'</span></div>');
+    // 未来逐年时间轴
+    H.push('<div class="tl-title">未来逐年节奏（攻 / 平 / 守）</div>');
+    H.push('<div class="tl">');
+    (ap.rhythm.timeline || []).forEach(function(t){ H.push('<span class="tl-chip '+(t.cls==="hi"?"atk":(t.cls==="lo"?"def":"mid"))+'" title="评分 '+t.score+'">'+t.year+'<small>'+t.age+'岁·'+t.gz+'·'+t.tag+'</small></span>'); });
+    H.push('</div>');
     H.push('<div class="window-why">'+esc(ap.rhythm.principle)+'</div>');
     H.push('<h3 class="act-h">自我觉察提示</h3><ul class="tips">');
     ap.self_aware.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');

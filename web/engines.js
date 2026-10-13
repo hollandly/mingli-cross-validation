@@ -649,7 +649,7 @@
 
   // ============ 人生行动指南（用户视角：把多维交叉验证结论翻译成可执行的「避坑手册」）============
   // 目标：用户不只看到一堆术语，而是清楚「当下该进攻还是防守、哪些重大决策今年能碰、该做/别做/留意什么」。
-  function _action_playbook(bazi, cv, liu, birthYear) {
+  function _action_playbook(bazi, cv, liu, birthYear, dayun_detail) {
     function gz2(g) { return g && g.length === 2 ? g[0] + g[1] : "—"; }
     var day_gan = bazi.day_master;
     var xiji = _xi_ji_sets(bazi), xi_set = xiji[0], ji_set = xiji[1];
@@ -752,17 +752,71 @@
     function uniq(a) { var seen = {}, out = []; a.forEach(function (x) { if (!seen[x]) { seen[x] = 1; out.push(x); } }); return out; }
     doL = uniq(doL).slice(0, 4); dontL = uniq(dontL).slice(0, 4); watchL = uniq(watchL).slice(0, 4);
 
-    // 4) 能量节奏管理（教用户用运势曲线自我管理：好年攻、坏年守）
+    // 4) 能量节奏管理（教用户用运势曲线自我管理：好年攻、坏年守；并给出精确时间段）
     var nowYear = cur ? cur.year : liu.now_year;
-    var nextWin = null, nextDef = null;
-    liu.rows.forEach(function (r) {
-      if (r.year <= nowYear) return;
-      if (!nextWin && (r.score >= 1.2 || (r.dayun_gz !== "—" && xi_set.indexOf(ten_god(day_gan, r.dayun_gz[0])) >= 0))) nextWin = r;
-      if (!nextDef && r.score <= -1.2) nextDef = r;
+    var nowAge = cur ? cur.age : (typeof birthYear === "number" && birthYear > 1900 ? nowYear - birthYear : null);
+    function tagOf(s) { return s >= 1.2 ? "攻" : (s >= -0.3 ? "平" : "守"); }
+    function clsOf(s) { return s >= 1.2 ? "hi" : (s >= -0.3 ? "mid" : "lo"); }
+
+    // 4.1 当前所处大运窗口（精确到年龄 / 年份区间）
+    var curPhase = null, curRange = null;
+    if (dayun_detail) {
+      dayun_detail.forEach(function (ph) {
+        var rm = ph.range.match(/(\d+)[–-](\d+)岁/);
+        if (rm && nowAge !== null && nowAge >= parseInt(rm[1], 10) && nowAge <= parseInt(rm[2], 10)) { curPhase = ph; curRange = rm; }
+      });
+    }
+    var curPhaseOut = null;
+    if (curPhase && curRange) {
+      var ca0 = parseInt(curRange[1], 10), ca1 = parseInt(curRange[2], 10);
+      var cy0 = (typeof birthYear === "number" && birthYear > 1900) ? (birthYear + ca0 - 1) : null;
+      var cy1 = (typeof birthYear === "number" && birthYear > 1900) ? (birthYear + ca1) : null;
+      curPhaseOut = {
+        gz: curPhase.gz, age_range: curPhase.range,
+        year_range: (cy0 !== null) ? (cy0 + "–" + cy1 + "年") : null,
+        fav: curPhase.theme.indexOf("（喜运）") >= 0, bad: curPhase.theme.indexOf("（忌运）") >= 0,
+        theme: curPhase.theme, tip: curPhase.tip, turning: curPhase.turning
+      };
+    }
+
+    // 4.2 最佳人生阶段：用逐年流年评分，挑出（尚未结束的）动能最顺的十年（精确年龄 / 年份区间）
+    var bestPhase = null, bestAvg = -Infinity;
+    if (dayun_detail && typeof birthYear === "number" && birthYear > 1900) {
+      dayun_detail.forEach(function (ph) {
+        if (ph.gz === "命局") return;
+        var rm = ph.range.match(/(\d+)[–-](\d+)岁/); if (!rm) return;
+        var a0 = parseInt(rm[1], 10), a1 = parseInt(rm[2], 10);
+        var y0 = birthYear + a0 - 1, y1 = birthYear + a1;
+        if (y1 < nowYear) return; // 只取尚未结束（含正在经历）的十年，确保可行动
+        var ys = liu.rows.filter(function (r) { return r.year >= y0 && r.year <= y1; });
+        if (ys.length < 3) return;
+        var avg = ys.reduce(function (s, r) { return s + r.score; }, 0) / ys.length;
+        if (avg > bestAvg) { bestAvg = avg; bestPhase = { a0: a0, a1: a1, y0: y0, y1: y1, gz: ph.gz, theme: ph.theme, avg: Math.round(avg * 100) / 100 }; }
+      });
+    }
+
+    // 4.3 最近可进攻 / 宜防守的年份（具体年份 + 年龄 + 干支）
+    var up = liu.rows.filter(function (r) { return r.year > nowYear; });
+    var atk = [], def = [];
+    up.forEach(function (r) {
+      var isFav运 = r.dayun_gz !== "—" && xi_set.indexOf(ten_god(day_gan, r.dayun_gz[0])) >= 0;
+      if (atk.length < 4 && (r.score >= 1.2 || (isFav运 && r.score >= 0.3))) atk.push({ year: r.year, age: r.age, gz: gz2(r.gz), score: r.score });
+      if (def.length < 4 && r.score <= -1.2) def.push({ year: r.year, age: r.age, gz: gz2(r.gz), score: r.score });
     });
+
+    // 4.4 逐年时间轴（未来约 12 年，攻 / 平 / 守一目了然）
+    var tl = up.slice(0, 12).map(function (r) { return { year: r.year, age: r.age, gz: gz2(r.gz), score: r.score, tag: tagOf(r.score), cls: clsOf(r.score) }; });
+
     var rhythm = {
-      next_window: nextWin ? (nextWin.year + " 年（约 " + (nextWin.year - nowYear) + " 年后，" + gz2(nextWin.gz) + "，评分 " + nextWin.score + "）") : "未来数年以平/守为主，暂无明显进攻大年",
-      next_defend: nextDef ? (nextDef.year + " 年（约 " + (nextDef.year - nowYear) + " 年后，" + gz2(nextDef.gz) + "，评分 " + nextDef.score + "）") : "暂无显著下行大年",
+      current_phase: curPhaseOut,
+      best_phase: bestPhase ? {
+        age_range: bestPhase.a0 + "–" + bestPhase.a1 + "岁", year_range: bestPhase.y0 + "–" + bestPhase.y1 + "年",
+        gz: bestPhase.gz, theme: bestPhase.theme, avg: bestPhase.avg, good: bestPhase.avg >= 0.3,
+        why: (bestPhase.avg >= 0.3)
+          ? "该十年流年评分均值约 " + bestPhase.avg + "，是全盘动能最顺的一段——宜把人生关键目标（事业进阶 / 置业 / 成家 / 重要合作）集中安排在此窗口，集中力量办大事。"
+          : "该十年流年评分均值约 " + bestPhase.avg + "（仍偏弱），未来数年动能整体偏收敛，没有特别顺的「发力大年」——以稳守、降风险、补能力为主；仍可逢个别平 / 吉年小步推进，不透支、不加杠杆。"
+      } : null,
+      next_attack: atk, next_defend: def, timeline: tl,
       principle: "好年攻、坏年守：在「进攻窗口」集中资源办大事、敢争取；在「防守期」收敛开支、降杠杆、把决策节奏放慢。用这份逐年曲线，你就能自己判断——接下来哪几年该冲、哪几年该忍。"
     };
 
@@ -1319,7 +1373,7 @@
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
     var dayun_detail = _dayun_detail(b, solar.getFullYear());
-    var action_playbook = _action_playbook(b, cv, liu, solar.getFullYear());
+    var action_playbook = _action_playbook(b, cv, liu, solar.getFullYear(), dayun_detail);
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
     var radar_wuxing = radar_svg(ELEMENTS, ELEMENTS.map(function (e) { return b.element_count[e]; }), { title: "五行分布", max: 8 });
