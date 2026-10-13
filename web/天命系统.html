@@ -10683,7 +10683,7 @@
     var mis=[]; for(var mi=0;mi<60;mi+=5) mis.push({v:mi,t:(mi<10?"0"+mi:mi)+"分"}); fill("f_minute",mis,0);
     var shs=[]; for(var i=0;i<12;i++){ var sc=SHICHEN[i]; shs.push({v:sc,t:sc+"时"}); } fill("f_shichen",shs,"午");
     var dl=document.getElementById("cityOptions");
-    Object.keys(CITY_LONGITUDE).forEach(function(c){ var o=document.createElement("option"); o.value=c; dl.appendChild(o); });
+    Object.keys(ML.C.CITY_LONGITUDE).forEach(function(c){ var o=document.createElement("option"); o.value=c; dl.appendChild(o); });
     document.getElementById("f_city").value="北京";
     fillMonth(true);
     document.getElementById("f_month").value=4;
