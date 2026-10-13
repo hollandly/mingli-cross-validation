@@ -9892,10 +9892,8 @@
       if (bazi.dayun[0].start_age > 0) phase.push({ range: "0–" + (Math.round(bazi.dayun[0].start_age) - 1) + "岁（起运前）", gz: "命局", tip: "未起运，依本命局之势：以学业、心性养成与家庭支持为主，别急着闯荡或大额押注" });
       bazi.dayun.forEach(function (d) {
         var god = ten_god(day_gan, d.gz[0]);
-        var fav = xi_set.indexOf(god) >= 0, bad = ji_set.indexOf(god) >= 0;
-        var tip = fav ? "此运干支为喜，十年动能偏顺——宜把握机会、主动进取、扩大成果；但顺境也别放松风控、别盲目加注。"
-          : bad ? "此运干支为忌，是守成蓄势的十年——控风险、重大决策三思、不替人担保、不盲目加杠杆，以稳换空间。"
-          : "此运平气，稳扎稳打、积累实力与资源，不躁不怠，别主动制造大变动。";
+        var score = _dayun_fav(bazi, d, xi_set, ji_set);
+        var tip = _phase_tip(bazi, d, god, score);
         phase.push({ range: Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + "岁", gz: d.gz, tip: tip });
       });
     }
@@ -10312,7 +10310,7 @@
     return { watch: watch.slice(0, 3), favor: favor.slice(0, 3) };
   }
   // 大运阶段详批：主题 + 关键转折年（岁运并临/天克地冲）+ 阶段建议
-  function _dayun_detail(bazi, birth_year) {
+  function _dayun_detail(bazi, birth_year, yijing) {
     var day_gan = bazi.day_master, xiji = _xi_ji_sets(bazi), xi = xiji[0], ji = xiji[1];
     function theme(god) {
       if (god === "正官" || god === "七杀") return "事业进阶：责任与考核加重，宜争位、掌权、立专业壁垒";
@@ -10326,7 +10324,8 @@
     if (bazi.dayun[0].start_age > 0) out.push({ range: "0–" + (Math.round(bazi.dayun[0].start_age) - 1) + "岁", gz: "命局", theme: "本命奠基：以学业、心性养成与家庭支持为主，不急于闯荡", turning: "—", tip: "未起运，顺势养根基；大额押注与远行宜缓。" });
     bazi.dayun.forEach(function (d) {
       var god = ten_god(day_gan, d.gz[0]);
-      var fav = xi.indexOf(god) >= 0, bad = ji.indexOf(god) >= 0;
+      var score = _dayun_fav(bazi, d, xi, ji);
+      var fav = score > 0.5, bad = score < -0.5;
       var turning = [];
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
       for (var a = a0; a <= a1; a++) {
@@ -10337,9 +10336,7 @@
           if (gk && _chong(gz[1], d.gz[1])) turning.push(a + "岁（天克地冲·大变动）");
         }
       }
-      var tip = fav ? "此运干支为喜，十年动能偏顺——宜把握窗口、主动进取、放大成果；顺境也别放松风控。"
-        : bad ? "此运干支为忌，守成蓄势的十年——控风险、重大决策三思、不替人担保、不盲目加杠杆，以稳换空间。"
-          : "此运平气，稳扎稳打、积累实力与资源，不主动制造大变动。";
+      var tip = _detail_tip(bazi, d, god, score, yijing);
       out.push({ range: a0 + "–" + a1 + "岁", gz: d.gz, theme: theme(god) + (fav ? "（喜运）" : bad ? "（忌运）" : ""), turning: turning.length ? turning.slice(0, 2).join("；") : "无明显大变动年", tip: tip });
     });
     return out;
@@ -10424,6 +10421,51 @@
     var sheng_elems = [de]; ELEMENTS.forEach(function (e) { if (SHENG[e] === de) sheng_elems.push(e); });
     if (sheng_elems.indexOf(top) >= 0) return [ke_xie, sheng_fu];
     return [sheng_fu, ke_xie];
+  }
+  // ===== 大运喜忌综合（天干十神 + 地支藏干，根治只看天干）与两段差异化建议 =====
+  function _dayun_fav(bazi, d, xi_set, ji_set) {
+    var day_gan = bazi.day_master;
+    var h = ten_god(day_gan, d.gz[0]);
+    var score = 0;
+    if (xi_set.indexOf(h) >= 0) score += 1.2;
+    if (ji_set.indexOf(h) >= 0) score -= 1.2;
+    (ZHI_CANGAN[d.gz[1]] || []).forEach(function (g, k) {
+      var zg = ten_god(day_gan, g);
+      var w = k === 0 ? 0.9 : (k === 1 ? 0.45 : 0.25);
+      if (xi_set.indexOf(zg) >= 0) score += w;
+      if (ji_set.indexOf(zg) >= 0) score -= w;
+    });
+    return score;
+  }
+  function _organ_of(e) { return { "木": "肝胆", "火": "心与小肠", "土": "脾胃", "金": "肺与大肠", "水": "肾与膀胱" }[e] || "脾胃"; }
+  // 人生阶段总览（与详批区分：偏"基调 + 用神发力点 + 该运主导十神动作"）
+  function _phase_tip(bazi, d, god, score) {
+    var strong = bazi.strength, gz = d.gz;
+    var yong = _xi_ji_sets(bazi)[0].slice(0, 2).join("/");
+    var fav = score > 0.5, bad = score < -0.5;
+    var act = { "正官": "掌权进阶与专业突破", "七杀": "扛责任、闯难关、争位", "正印": "学习考证、借平台荫护", "偏印": "钻研冷门、补认知短板", "正财": "现金流与业务落地", "偏财": "资产增值与机会变现", "食神": "表达创新、以才生财", "伤官": "破除陈规、靠创意兑现", "比肩": "合伙借力、团队作战", "劫财": "资源共享但分账白纸黑字" }[god] || "顺势积累";
+    if (fav) {
+      if (strong === "身弱") return "此运（" + gz + "）干支引动「" + yong + "」生扶日主，身弱得助——宜走「" + act + "」之路：借平台、靠团队、把师长/家庭资源用足；不宜单兵冒进或大额加杠杆。";
+      return "此运（" + gz + "）干支为「" + god + "」喜用得力——宜抓「" + act + "」窗口：把劲压在事业突破与资产落地上；顺境也留风控底线，不盲目加注。";
+    }
+    if (bad) {
+      if (strong === "身弱") return "此运（" + gz + "）干支加重克泄耗，身弱更吃力——「" + act + "」相关动作宜收着：先稳住主业与现金流，重大决策三思、不替人担保、不盲目加杠杆；以学习与人脉托底，等下一运转旺。";
+      return "此运（" + gz + "）干支为「" + god + "」忌神逢生——「" + act + "」易过亢失控：把精力转成纪律、运动、制度建设，防固执冒进；财务控杠杆、合作分账白纸黑字。";
+    }
+    return "此运（" + gz + "）干支与日主中和，动能平——「" + act + "」可小步推进但不主动制造大变动；把现有摊子做厚，等下一个发力窗口。";
+  }
+  // 大运详批（机制视角：干支十神+纳音+冲合+脏腑+周易本命卦，与阶段总览区分）
+  function _detail_tip(bazi, d, god, score, yijing) {
+    var day_zhi = bazi.four_pillars.day.gz[1];
+    var gz = d.gz, ny = d.nayin, ny_elem = nayin(gz);
+    var fav = score > 0.5, bad = score < -0.5;
+    var parts = [];
+    parts.push("运干「" + gz[0] + "」为" + god + "、纳音" + ny + "（" + ny_elem + "），整体" + (fav ? "助你用神、十年气场偏顺" : bad ? "加重忌神、十年气场偏收" : "与日主中和、气场平稳") + "。");
+    if (_chong(gz[1], day_zhi)) parts.push("运支「" + gz[1] + "」与日支「" + day_zhi + "」相冲，主内部变动（居所/岗位/身心节奏），重要决定留缓冲。");
+    else parts.push("运支「" + gz[1] + "」与日支无冲，根基相对稳定，宜顺势做厚基本盘。");
+    parts.push("健康侧重点在「" + _organ_of(ZHI_ELEMENT[ZHI_INDEX[gz[1]]]) + "」，此运宜规律作息、年度针对性体检。");
+    if (yijing && yijing.ben_gua) parts.push("本命卦「" + yijing.ben_gua + "」(" + yijing.gua_nature + ")与此运互参：宜" + (fav ? "借卦象之势主动作为" : bad ? "以卦之守静涵养待时" : "动静得宜") + "。");
+    return parts.join("");
   }
   function _score_to_grade(score) {
     if (score >= 1.2) return ["吉", "hi", "流年得力，是落地关键决策的窗口，但顺境别放松风控"];
@@ -10632,7 +10674,7 @@
     var liu = compute_liunian(b, z, solar);
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
-    var dayun_detail = _dayun_detail(b, solar.getFullYear());
+    var dayun_detail = _dayun_detail(b, solar.getFullYear(), yj);
     var action_playbook = _action_playbook(b, cv, liu, solar.getFullYear(), dayun_detail);
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
