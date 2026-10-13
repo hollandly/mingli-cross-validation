@@ -1,2 +1,3 @@
-cnlunar
-flask
+# 锁定精确版本，防止 `pip install` 拉取到被篡改/破坏性更新的版本（供应链防护）
+flask==3.1.3
+cnlunar==0.2.5

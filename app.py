@@ -1,6 +1,31 @@
 # -*- coding: utf-8 -*-
 """天命系统 · Flask 交互原型。
 启动：python app.py  -> 浏览器打开 http://127.0.0.1:5000
+
+============================================================================
+公网部署安全检查清单（仅在把本服务暴露到互联网时才需要全部满足）
+============================================================================
+本应用默认仅绑定 127.0.0.1（本机），属安全状态。若改为对外服务，请逐项确认：
+  [1] 调试模式必须关闭：绝不可设 debug=True（见文件底部 app.run）。
+      调试器一旦网络可达，攻击者可借控制台 PIN 远程执行代码（RCE）。
+  [2] 设置强会话密钥：部署前 export FLASK_SECRET_KEY=$(python -c "import secrets;print(secrets.token_hex(32))")，
+      且密钥不入库、不写死在代码里。
+  [3] 绑定地址谨慎：不要直接 0.0.0.0 暴露。建议经 Nginx/Caddy 反向代理，
+      由代理对外监听 443，Flask 仅监听本机或内网。
+  [4] 强制 HTTPS：反向代理层启用 TLS（Let's Encrypt 免费证书），
+      并配置 HSTS，避免中间人窃听/篡改。
+  [5] 加访问鉴权：本接口无登录，公网直接暴露会被任意调用。
+      至少加一层密码/Token 校验或放在 VPN/内网，再决定是否开放。
+  [6] 限流防滥用：用 Flask-Limiter 等对接入频率限流，防刷接口/DoS。
+  [7] 安全响应头：由代理加上 X-Content-Type-Options、X-Frame-Options(DENY)、
+      Referrer-Policy、Content-Security-Policy 等。
+  [8] 错误不泄露内部信息：生产环境关闭 Werkzeug 详细错误页（debug=False 已保证），
+      不在页面/JSON 中回显堆栈或内部路径。
+  [9] 依赖定期更新：pip install -r requirements.txt 的版本已 pin，
+      但仍需关注 CVE 公告及时升级（flask / cnlunar 等）。
+ [10] 不提交密钥：.env、*.token、含口令的构建脚本（如 enc.js）一律不入库
+      （仓库 .gitignore 已忽略 .env / *.token）。
+============================================================================
 """
 import datetime
 import os
@@ -13,13 +38,40 @@ from engine import bazi as B, ziwei as Z, yijing as Y, tieban as T, cross_valida
 
 app = Flask(__name__)
 
+# 会话密钥：优先读环境变量 FLASK_SECRET_KEY（部署时务必设置强随机值）；
+# 未设置则每次启动随机生成（本应用当前无持久会话，仅作纵深防御，防未来会话伪造）。
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
+
+# 纵深防御：限制请求体大小（当前无文件上传，仅为防滥用/DoS）
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB
+
 
 def _parse_birth(form):
-    y = int(form["year"]); m = int(form["month"]); d = int(form["day"])
-    hh = int(form["hour"]); mm = int(form.get("minute", 0) or 0)
+    """校验并解析出生信息。失败抛出 ValueError（中文说明），由调用方捕获返回 400。"""
+    try:
+        y = int(form["year"]); m = int(form["month"]); d = int(form["day"])
+        hh = int(form["hour"]); mm = int(form.get("minute", 0) or 0)
+    except (KeyError, ValueError, TypeError):
+        raise ValueError("请完整填写年/月/日/时，且必须为整数")
+    if not (1900 <= y <= 2100):
+        raise ValueError("年份需在 1900–2100 之间")
+    if not (1 <= m <= 12):
+        raise ValueError("月份需在 1–12 之间")
+    if not (1 <= d <= 31):
+        raise ValueError("日期需在 1–31 之间")
+    if not (0 <= hh <= 23):
+        raise ValueError("小时需在 0–23 之间")
+    if not (0 <= mm <= 59):
+        raise ValueError("分钟需在 0–59 之间")
     gender = form.get("gender", "男")
-    birthplace = form.get("birthplace", "北京时间(东经120°)")
-    birth = datetime.datetime(y, m, d, hh, mm)
+    if gender not in ("男", "女"):
+        raise ValueError("性别取值不合法")
+    # 出生地来自受控下拉框；限长 64 防超长/异常输入
+    birthplace = (form.get("birthplace") or "北京时间(东经120°)")[:64]
+    try:
+        birth = datetime.datetime(y, m, d, hh, mm)
+    except ValueError:
+        raise ValueError("该日期不存在（如 2 月 30 日）")
     return birth, gender, birthplace
 
 
@@ -142,4 +194,8 @@ def export_json():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # 安全：默认关闭调试器。Werkzeug 调试器一旦开启且被网络可达，攻击者可借控制台 PIN 远程执行代码。
+    # 仅在本地排错时通过环境变量临时开启：FLASK_DEBUG=1 python app.py
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    # 仅绑定本机回环地址，不对外暴露；如需对外请改用反向代理并强制 HTTPS。
+    app.run(host="127.0.0.1", port=5000, debug=debug)

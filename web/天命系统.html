@@ -10405,7 +10405,7 @@
     if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; this.textContent = "开启摄像头"; return; }
     var v = document.getElementById("cam"), self = this;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("当前浏览器不支持摄像头，请改用「上传照片」。"); return; }
-    navigator.mediaDevices.getUserMedia({ video: true }).then(function (s) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false }).then(function (s) {
       camStream = s; v.srcObject = s; self.textContent = "关闭摄像头";
     }).catch(function (e) { alert("无法开启摄像头：" + (e.message || e) + "（可改用「上传照片」）"); });
   });
@@ -10446,7 +10446,7 @@
     return false;
   }
 
-  function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function gz(g){ return g[0]+g[1]; }
   function clsOf(g){ return g==="吉"||g==="平偏吉"?"hi":(g==="平"?"mid":"lo"); }
 
