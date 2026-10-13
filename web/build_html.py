@@ -2,11 +2,13 @@
 """Build a single self-contained HTML file for the 天命系统.
 Inlines web/lunar.js and web/engines.js, plus the report UI, into one file.
 """
-import io, os
+import io, os, base64
 
 WEB = "/Users/linpengchen/WorkBuddy/2026-10-10-13-49-27/MingLi_System/web"
 lunar = open(os.path.join(WEB, "lunar.js"), encoding="utf-8").read()
 engines = open(os.path.join(WEB, "engines.js"), encoding="utf-8").read()
+icon_svg = open(os.path.join(WEB, "icon.svg"), encoding="utf-8").read().strip()
+favicon = "data:image/svg+xml;base64," + base64.b64encode(icon_svg.encode("utf-8")).decode("ascii")
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -14,6 +16,8 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>天命系统 · 录入与报告</title>
+<link rel="icon" href="__FAVICON__" type="image/svg+xml">
+<link rel="apple-touch-icon" href="__FAVICON__">
 <style>
   :root{
     --ink:#2b2620; --paper:#f7f2e7; --paper2:#fffdf8; --line:#e3d9c2;
@@ -25,6 +29,9 @@ TEMPLATE = r"""<!DOCTYPE html>
     color:var(--ink);background:linear-gradient(180deg,#f3ecdc,#efe6d2);line-height:1.65;}
   .wrap{max-width:1080px;margin:0 auto;padding:22px 18px 80px;}
   header.top{text-align:center;padding:18px 0 6px;}
+  .brand{display:inline-flex;align-items:center;justify-content:center;gap:14px;}
+  .brand svg{width:54px;height:54px;flex:0 0 auto;filter:drop-shadow(0 3px 9px rgba(120,80,20,.35));}
+  .brand-txt{text-align:left;}
   header.top h1{margin:0;font-size:25px;letter-spacing:3px;color:var(--gold);font-weight:700;}
   header.top .sub{color:var(--muted);font-size:13px;margin-top:4px;letter-spacing:1px;}
   .disclaimer{background:#fbf3e0;border:1px solid #ecd9b0;color:#7a6a44;font-size:12px;
@@ -172,8 +179,13 @@ TEMPLATE = r"""<!DOCTYPE html>
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>天命系统</h1>
-    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
+    <div class="brand">
+      __ICON__
+      <div class="brand-txt">
+        <h1>天命系统</h1>
+        <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
+      </div>
+    </div>
   </header>
   <div class="disclaimer">
     本系统用于传统文化研究、自我认知与性格参考，<b>不构成任何医疗、投资、法律或人生的决策建议</b>。
@@ -285,7 +297,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   <!-- 报告容器 -->
   <div id="report" class="hidden"></div>
 
-  <footer>天命系统 · 纯浏览器本地运算（数据不上传）· 传统文化研究工具</footer>
+  <footer>天命系统 · 纯浏览器本地运算（数据不上传）· 传统文化研究工具 ｜ 著作人 <b>hollandly</b></footer>
 </div>
 
 <!-- ============ 历法底层 ============ -->
@@ -878,7 +890,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 </html>
 """
 
-out = TEMPLATE.replace("<<<LUNAR_JS>>>", lunar).replace("<<<ENGINES_JS>>>", engines)
+out = TEMPLATE.replace("<<<LUNAR_JS>>>", lunar).replace("<<<ENGINES_JS>>>", engines).replace("__FAVICON__", favicon).replace("__ICON__", icon_svg)
 dest = os.path.join(WEB, "天命系统.html")
 open(dest, "w", encoding="utf-8").write(out)
 print("written:", dest, "bytes:", len(out.encode("utf-8")), "lunar:", len(lunar), "engines:", len(engines))

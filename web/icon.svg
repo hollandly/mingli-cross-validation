@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="天命系统">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="78%">
+      <stop offset="0%" stop-color="#2c2768"/>
+      <stop offset="55%" stop-color="#171541"/>
+      <stop offset="100%" stop-color="#0a0920"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7e0a0"/>
+      <stop offset="45%" stop-color="#d9a850"/>
+      <stop offset="100%" stop-color="#9c6a25"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f7e0a0" stop-opacity=".38"/>
+      <stop offset="100%" stop-color="#f7e0a0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="jade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#82e0cf"/>
+      <stop offset="100%" stop-color="#2f9e8c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方底 -->
+  <rect x="6" y="6" width="244" height="244" rx="56" ry="56" fill="url(#bg)"/>
+  <rect x="6" y="6" width="244" height="244" rx="56" ry="56" fill="none" stroke="url(#gold)" stroke-opacity=".35" stroke-width="2"/>
+
+  <!-- 中心光晕 -->
+  <circle cx="128" cy="128" r="88" fill="url(#glow)"/>
+
+  <!-- 外环 + 八卦刻度 -->
+  <circle cx="128" cy="128" r="104" fill="none" stroke="url(#gold)" stroke-width="5"/>
+  <g stroke="url(#gold)" stroke-width="4" stroke-linecap="round">
+    <line x1="128" y1="24" x2="128" y2="12"/>
+    <line x1="201.5" y1="54.5" x2="210" y2="46"/>
+    <line x1="232" y1="128" x2="244" y2="128"/>
+    <line x1="201.5" y1="201.5" x2="210" y2="210"/>
+    <line x1="128" y1="232" x2="128" y2="244"/>
+    <line x1="54.5" y1="201.5" x2="46" y2="210"/>
+    <line x1="24" y1="128" x2="12" y2="128"/>
+    <line x1="54.5" y1="54.5" x2="46" y2="46"/>
+  </g>
+
+  <!-- 轨道椭圆（天命流转） -->
+  <ellipse cx="128" cy="128" rx="106" ry="48" transform="rotate(-18 128 128)" fill="none" stroke="url(#gold)" stroke-opacity=".22" stroke-width="1.5"/>
+  <!-- 轨道三曜：金 / 玉 / 霞 -->
+  <circle cx="195.7" cy="73.5" r="7.5" fill="url(#gold)"/>
+  <circle cx="176.4" cy="159.7" r="6.5" fill="url(#jade)"/>
+  <circle cx="27.2" cy="160.8" r="6.5" fill="#e0729a"/>
+
+  <!-- 太极（命理核心） -->
+  <g transform="rotate(18 128 128)">
+    <circle cx="128" cy="128" r="46" fill="url(#gold)"/>
+    <path d="M128 82 a23 23 0 0 1 0 46 a23 23 0 0 0 0 46 a46 46 0 0 1 0 -92 z" fill="#13112e"/>
+    <circle cx="128" cy="105" r="7" fill="#13112e"/>
+    <circle cx="128" cy="151" r="7" fill="url(#gold)"/>
+  </g>
+
+  <!-- 星芒（点睛之光） -->
+  <path d="M206 34 L210 49 L225 53 L210 57 L206 72 L202 57 L187 53 L202 49 Z" fill="#fff3cf" opacity=".92"/>
+</svg>

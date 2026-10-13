@@ -1,5 +1,7 @@
 # 天命系统（Tianming Cross-Validation System）
 
+> **著作人：hollandly**
+
 将 **四柱八字、紫微斗数、周易、铁板神数** 四套传统命理体系，统一映射到 7 个人生维度，
 进行多源交叉验证，输出分级结论。详见 `framework.md`（方法论框架）。
 
