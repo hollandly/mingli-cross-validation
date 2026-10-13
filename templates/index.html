@@ -30,6 +30,14 @@
   .row>div{flex:1;min-width:90px}
   input,select{width:100%;padding:10px 12px;border:1px solid var(--line);
         border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}
+  /* 出生地可搜索下拉（替代不可靠的 datalist，macOS/Safari 兼容） */
+  .combo{position:relative;}
+  .combo-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;margin:0;padding:4px;
+    list-style:none;max-height:240px;overflow:auto;background:#fff;border:1px solid var(--line);
+    border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);}
+  .combo-list li{padding:7px 10px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--ink);}
+  .combo-list li:hover,.combo-list li.active{background:#f0f4f9;color:var(--accent);}
+  .combo-list li.empty{padding:8px 10px;color:var(--muted);cursor:default;}
   input:focus,select:focus{outline:none;border-color:var(--accent)}
   button.primary{margin-top:22px;width:100%;padding:13px;background:var(--accent);
         color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
@@ -97,10 +105,10 @@
           </div>
         </div>
         <label>出生地（用于真太阳时校正，可搜索）</label>
-        <input name="birthplace" id="birthplace" list="cityOptions" autocomplete="off" value="北京" style="width:100%;padding:8px 10px;font-size:14px;box-sizing:border-box;" placeholder="输入或搜索城市，如 杭州 / 西安 / 拉萨">
-        <datalist id="cityOptions">
-          {% for c in cities %}<option value="{{c}}">{% endfor %}
-        </datalist>
+        <div class="combo">
+          <input name="birthplace" id="birthplace" autocomplete="off" value="北京" style="width:100%;padding:8px 10px;font-size:14px;box-sizing:border-box;" placeholder="输入或搜索城市，如 杭州 / 西安 / 拉萨">
+          <ul class="combo-list hidden" id="cityList"></ul>
+        </div>
         <div class="note">支持直接搜索；若城市未收录，将按北京时间(东经120°)近似校正真太阳时。</div>
         <button type="submit">开始交叉验证分析</button>
       </form>
@@ -207,6 +215,38 @@
         .then(function(d){ if(d.ok){ msg.style.color='#1a7f37'; msg.textContent = d.msg + '（即将刷新）'; setTimeout(function(){ location.reload(); }, 900); }
                          else { msg.textContent = d.msg; } });
     });
+
+    // 出生地可搜索下拉（替代不可靠的 datalist，macOS/Safari 兼容）
+    (function(){
+      var input=$('birthplace'); if(!input) return;
+      var list=$('cityList'); if(!list) return;
+      var cities={{ cities|tojson }};
+      var active=-1;
+      function esc2(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      function render(q){
+        q=(q||"").trim();
+        var m=cities.filter(function(c){return c.indexOf(q)>=0;});
+        if(!m.length){ list.innerHTML='<li class="empty">未匹配，将按北京时间(东经120°)近似校正</li>'; list.classList.remove('hidden'); return; }
+        list.innerHTML=m.map(function(c){return '<li data-v="'+esc2(c)+'">'+esc2(c)+'</li>';}).join('');
+        list.classList.remove('hidden'); active=-1;
+        list.querySelectorAll('li[data-v]').forEach(function(li){ li.addEventListener('click',function(){ input.value=li.getAttribute('data-v'); list.classList.add('hidden'); }); });
+      }
+      input.addEventListener('focus',function(){ render(input.value); });
+      input.addEventListener('input',function(){ render(input.value); });
+      input.addEventListener('keydown',function(e){
+        var items=list.querySelectorAll('li[data-v]');
+        if(list.classList.contains('hidden')||!items.length){ if(e.key==='ArrowDown'){render(input.value);} return; }
+        if(e.key==='ArrowDown'){ active=Math.min(active+1,items.length-1); }
+        else if(e.key==='ArrowUp'){ active=Math.max(active-1,0); }
+        else if(e.key==='Enter'){ if(active>=0){ input.value=items[active].getAttribute('data-v'); list.classList.add('hidden'); e.preventDefault(); } return; }
+        else if(e.key==='Escape'){ list.classList.add('hidden'); return; }
+        else return;
+        e.preventDefault();
+        items.forEach(function(it,i){ it.classList.toggle('active', i===active); });
+        if(items[active]) items[active].scrollIntoView({block:'nearest'});
+      });
+      document.addEventListener('click',function(e){ if(!e.target.closest('.combo')) list.classList.add('hidden'); });
+    })();
   })();
 </script>
 </body>
