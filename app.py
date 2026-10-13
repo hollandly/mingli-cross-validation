@@ -68,9 +68,31 @@ def _gen_pw(n=14):
 
 
 def _seed_users():
-    """首次运行生成默认账号；环境变量可覆盖初始密码，否则随机并在终端打印。"""
-    admin_pw = os.environ.get("ADMIN_PASSWORD") or _gen_pw()
-    user_pw = os.environ.get("USER_PASSWORD") or _gen_pw()
+    """首次运行生成默认账号；环境变量可覆盖初始密码，否则随机并在终端打印。
+
+    安全约束（关键）：admin 与 user 的初始密码必须互不相同。否则任何拿到 user
+    账号密码的人，都能在右上角⚙面板以 admin 身份登录并篡改密码。
+      - 随机分支：循环生成直至两者不同（极小碰撞概率下也保证不撞）。
+      - 若两个环境变量都被显式设置且相同：视为配置错误，拒绝启动。
+    """
+    admin_pw = os.environ.get("ADMIN_PASSWORD")
+    user_pw = os.environ.get("USER_PASSWORD")
+    # 随机分支：保证 admin 与 user 密码互不相同
+    if not admin_pw:
+        admin_pw = _gen_pw()
+        while admin_pw == user_pw:
+            admin_pw = _gen_pw()
+    if not user_pw:
+        user_pw = _gen_pw()
+        while user_pw == admin_pw:
+            user_pw = _gen_pw()
+    # 显式配置冲突：两者相同属致命错误，启动即拦截
+    if admin_pw == user_pw:
+        raise SystemExit(
+            "【致命】ADMIN_PASSWORD 与 USER_PASSWORD 不能相同！\n"
+            "  若两者一致，任何拿到 user 密码的人都能登录管理员面板改密码。\n"
+            "  请为两者设置不同的强密码后重新启动。"
+        )
     seed = [
         {"username": "admin", "role": "admin", "pw": generate_password_hash(admin_pw)},
         {"username": "user", "role": "user", "pw": generate_password_hash(user_pw)},
@@ -82,7 +104,7 @@ def _seed_users():
         print("【天命系统】管理员 admin 初始密码：", admin_pw)
     if not os.environ.get("USER_PASSWORD"):
         print("【天命系统】用户   user 初始密码：", user_pw)
-    print("（以上为首次启动随机密码，请登录后在右上角⚙管理员面板尽快修改）")
+    print("（以上两密码互不相同，请分别妥善保存；登录后在右上角⚙管理员面板可修改用户密码）")
     return seed
 
 
