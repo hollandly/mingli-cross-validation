@@ -52,10 +52,12 @@
           </select>
         </div>
       </div>
-      <label>出生地（用于真太阳时修正）</label>
-      <select name="birthplace">
-        {% for c in cities %}<option value="{{c}}">{{c}}</option>{% endfor %}
-      </select>
+      <label>出生地（用于真太阳时校正，可搜索）</label>
+      <input name="birthplace" id="birthplace" list="cityOptions" autocomplete="off" value="北京" style="width:100%;padding:8px 10px;font-size:14px;box-sizing:border-box;" placeholder="输入或搜索城市，如 杭州 / 西安 / 拉萨">
+      <datalist id="cityOptions">
+        {% for c in cities %}<option value="{{c}}">{% endfor %}
+      </datalist>
+      <div class="note">支持直接搜索；若城市未收录，将按北京时间(东经120°)近似校正真太阳时。</div>
       <button type="submit">开始交叉验证分析</button>
     </form>
     <div class="note">提示：时辰越精确，八字/紫微/周易越稳定；模糊时辰会触发「考时复核」标记。本系统为传统文化研究参考，非医疗/投资/决策建议。</div>
