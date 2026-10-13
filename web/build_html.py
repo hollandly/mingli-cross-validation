@@ -127,6 +127,25 @@ TEMPLATE = r"""<!DOCTYPE html>
     .two{gap:10px;}
     .kv{font-size:12px;}
   }
+  /* 人生行动指南（核心） */
+  .win-banner{text-align:center;font-size:16px;font-weight:700;padding:12px;border-radius:10px;letter-spacing:1px;}
+  .window-why{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.85;text-align:left;}
+  .act-h{font-size:15px;margin:16px 0 7px;font-weight:600;color:var(--ink);}
+  .act-list{list-style:none;margin:4px 0;padding:0;}
+  .act-list li{position:relative;padding:7px 12px 7px 34px;margin:6px 0;border-radius:9px;font-size:13.5px;line-height:1.7;}
+  .act-do li{background:#eef6f0;border:1px solid #cfe4d6;}
+  .act-do li::before{content:"✓";position:absolute;left:11px;top:7px;color:var(--green);font-weight:700;}
+  .act-dont li{background:#fbeee9;border:1px solid #eccabf;}
+  .act-dont li::before{content:"✕";position:absolute;left:12px;top:7px;color:var(--red);font-weight:700;}
+  .act-watch li{background:#fbf3df;border:1px solid #ecd9a8;}
+  .act-watch li::before{content:"!";position:absolute;left:13px;top:6px;color:#b07d2f;font-weight:700;}
+  .decz{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+  @media(max-width:720px){.decz{grid-template-columns:1fr;}}
+  .dec{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--paper2);}
+  .dec .dn{font-weight:600;font-size:13.5px;}
+  .dec .dt{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.6;}
+  .lt{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;}
+  .lt.green{background:var(--green);} .lt.amber{background:#d9a521;} .lt.red{background:var(--red);}
   @media print{
     .disclaimer,.card#formCard,.card#savedCard,.card#xiangCard,.actions,.note,.btn,#errBox{display:none!important;}
     body{background:#fff;color:#000;}
@@ -399,7 +418,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   // ---- 渲染 ----
   function render(ctx){
-    var b=ctx.bazi, z=ctx.ziwei, yj=ctx.yijing, tb=ctx.tieban, cv=ctx.cv, liu=ctx.liunian, geo=ctx.geo;
+    var b=ctx.bazi, z=ctx.ziwei, yj=ctx.yijing, tb=ctx.tieban, cv=ctx.cv, liu=ctx.liunian, geo=ctx.geo, ap=ctx.action_playbook;
     var H=[];
     H.push('<div class="card"><h2>一、基本信息与真太阳时校正</h2>');
     H.push('<div class="kv">');
@@ -591,10 +610,35 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('</div>');
     H.push('</div>');
 
+    // 人生行动指南（核心 · 用户视角：把交叉验证结论翻译成可执行的避坑手册）
+    H.push('<div class="card"><h2>八、人生行动指南（核心建议）</h2>');
+    H.push('<div class="note">这一节把前文的「多维交叉验证」结论，翻译成你<b>现在就能用</b>的避坑手册：先判断当下该进攻还是防守，再给六类重大决策亮红绿灯，最后列清该做 / 别做 / 留意。所有内容均为<b>决策参考与自我觉察</b>，非宿命判定。</div>');
+    var wcls = ap.window.cls==="hi"?"grade-hi":(ap.window.cls==="lo"?"grade-bad":"grade-mid");
+    H.push('<div class="win-banner '+wcls+'">当下判断：'+esc(ap.window.verdict)+'</div>');
+    H.push('<div class="window-why">'+esc(ap.window.why)+'</div>');
+    H.push('<h3 class="act-h">重大决策红绿灯（今年）</h3>');
+    H.push('<div class="decz">');
+    ap.decisions.forEach(function(d){ H.push('<div class="dec"><div class="dn"><span class="lt '+d.light+'"></span>'+esc(d.name)+'</div><div class="dt">'+esc(d.text)+'</div></div>'); });
+    H.push('</div>');
+    H.push('<div class="two" style="margin-top:14px"><div><h3 class="act-h" style="color:var(--green)">✅ 该做（趁势发力）</h3><ul class="act-list act-do">');
+    ap.do_list.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul></div>');
+    H.push('<div><h3 class="act-h" style="color:var(--red)">⛔ 别做（规避弯路）</h3><ul class="act-list act-dont">');
+    ap.dont_list.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul></div></div>');
+    H.push('<h3 class="act-h" style="color:#b07d2f">⚠ 留意（需现实校准）</h3><ul class="act-list act-watch">');
+    ap.watch_list.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
+    H.push('<h3 class="act-h">能量节奏管理（自己看曲线做规划）</h3>');
+    H.push('<div class="kv"><span class="k">下一个进攻窗口：</span><span class="v" style="color:var(--green)">'+esc(ap.rhythm.next_window)+'</span></div>');
+    H.push('<div class="kv"><span class="k">下一个防守期：</span><span class="v" style="color:var(--red)">'+esc(ap.rhythm.next_defend)+'</span></div>');
+    H.push('<div class="window-why">'+esc(ap.rhythm.principle)+'</div>');
+    H.push('<h3 class="act-h">自我觉察提示</h3><ul class="tips">');
+    ap.self_aware.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
+    H.push('<div class="note">人生决策最终在你手里：本系统帮你「看清局势、少走弯路」，但每一个选择仍由你自己承担与把握。</div>');
+    H.push('</div>');
+
     H.push('<div class="actions" style="margin-top:10px"><button class="btn ghost" id="btnBack">↑ 返回录入 / 修改信息</button></div>');
 
     // 人生指导总览
-    H.push('<div class="card"><h2>八、人生指导总览</h2>');
+    H.push('<div class="card"><h2>九、人生指导总览</h2>');
     var lg = cv.life_guidance;
     H.push('<div class="grade-banner grade-mid" style="text-align:left;font-size:14px;font-weight:500;line-height:1.9;color:var(--ink)">' + esc(lg.overall) + '</div>');
     H.push('<div class="two" style="margin-top:12px"><div><h3>✅ 你的优势领域</h3><ul class="tips">');

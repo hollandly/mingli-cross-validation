@@ -646,6 +646,133 @@
     if (review_flags.length) overall += " 另：" + review_flags.join("");
     return { overall: overall, strengths: strengths, cautions: cautions, dimension_tips: dim_tips, by_phase: phase };
   }
+
+  // ============ 人生行动指南（用户视角：把多维交叉验证结论翻译成可执行的「避坑手册」）============
+  // 目标：用户不只看到一堆术语，而是清楚「当下该进攻还是防守、哪些重大决策今年能碰、该做/别做/留意什么」。
+  function _action_playbook(bazi, cv, liu) {
+    function gz2(g) { return g && g.length === 2 ? g[0] + g[1] : "—"; }
+    var day_gan = bazi.day_master;
+    var xiji = _xi_ji_sets(bazi), xi_set = xiji[0], ji_set = xiji[1];
+    var cur = null; liu.rows.forEach(function (r) { if (r.is_current) cur = r; });
+    var dy = cur ? cur.dayun_gz : "—";
+    var dy_god = dy !== "—" ? ten_god(day_gan, dy[0]) : null;
+    var dy_fav = !!dy_god && xi_set.indexOf(dy_god) >= 0;
+    var dy_bad = !!dy_god && ji_set.indexOf(dy_god) >= 0;
+    var cons_hi = cv.cons_counts["高一致"];
+    var curScore = cur ? cur.score : 0;
+    var curGrade = cur ? cur.grade : "平";
+    var dimOf = {}; cv.matrix.forEach(function (m) { dimOf[m.dimension] = m; });
+
+    // 1) 当下窗口判定：进攻 / 防守 / 蓄力（综合大运喜忌 + 流年评分 + 交叉一致性）
+    var win, winCls, winWhy;
+    if (dy_fav && curScore >= 0.3 && curGrade !== "凶" && curGrade !== "平偏凶") {
+      win = "进攻窗口 · 宜主动推进"; winCls = "hi";
+      winWhy = "当前大运「" + gz2(dy) + "」属你喜用，且流年" + gz2(cur.gz) + "动能偏顺（评分 " + curScore + "）。多重信号同向，是落地关键目标的窗口——可主动争取、扩大成果，但仍须保留风控底线，不盲目加注。";
+    } else if (dy_bad || curScore <= -0.3 || curGrade === "凶" || curGrade === "平偏凶") {
+      win = "防守蓄势 · 宜稳不宜动"; winCls = "lo";
+      winWhy = "当前" + (dy_bad ? ("大运「" + gz2(dy) + "」为忌") : "") + (curScore <= -0.3 ? ("、流年动能偏弱（评分 " + curScore + "）") : "") + (dy === "—" ? "、尚依本命局" : "") + "。信号偏收敛，这一年以「避坑、守成、降风险」为主：重大决策暂缓，不辞职、不盲目投资、不替人担保、合同反复审。";
+    } else {
+      win = "平稳蓄力 · 顺势而为"; winCls = "mid";
+      winWhy = "当前大运「" + gz2(dy) + "」(" + (dy_god || "本命") + ") 属平气，流年评分 " + curScore + " 居中。不强行、不躁进，把现有摊子稳住、把能力与资源做厚，等下一个进攻窗口。";
+    }
+    winWhy += (cons_hi >= 4 ? " 交叉验证高一致维度多，判断可信度较高，可放心据此发力。"
+      : cons_hi >= 1 ? " 交叉验证以中一致为主，关键动作仍辅以现实反馈校准。"
+        : " 交叉验证存在分歧，重大动作前先小步试错、以现实反馈校准。");
+
+    // 2) 重大决策红绿灯（六类常见重大决定）
+    var decisions = [];
+    (function () { // 跳槽 / 求职
+      var ss = cur ? cur.shi_shen : "", light, text;
+      if (cur && xi_set.indexOf(ss) >= 0 && (ss === "正官" || ss === "七杀" || ss === "正印" || ss === "偏印")) { light = "green"; text = "今年利掌权、进阶与考证，可主动争取管理岗或专业突破；签约留书面凭证。"; }
+      else if (cur && ji_set.indexOf(ss) >= 0 && (ss === "七杀" || ss === "伤官")) { light = "red"; text = "今年职场压力与是非偏重，不宜裸辞或强出头，人事变动先忍一步、缓一缓。"; }
+      else { light = "amber"; text = "职场平稳。跳槽/转岗可择机，但务必先备退路、写清权责边界再动。"; }
+      decisions.push({ name: "跳槽 / 求职", light: light, text: text });
+    })();
+    (function () { // 投资 / 理财
+      var ss = cur ? cur.shi_shen : "", light, text;
+      if (cur && xi_set.indexOf(ss) >= 0 && (ss === "正财" || ss === "偏财") && curScore >= 0.3) { light = "green"; text = "财星为喜，可稳健理财、留足应急金，偏财只动闲钱，不追加杠杆。"; }
+      else if (curScore <= -0.3 || (cur && ji_set.indexOf(ss) >= 0 && (ss === "正财" || ss === "偏财"))) { light = "red"; text = "今年财运宜守：不新增贷款、不替人担保、投资只做闲钱甚至不投，先保现金流。"; }
+      else { light = "amber"; text = "财运中性，量入为出、不投机、不替人担保背债。"; }
+      decisions.push({ name: "投资 / 理财", light: light, text: text });
+    })();
+    (function () { // 创业 / 副业
+      var ss = cur ? cur.shi_shen : "", light, text;
+      if (cur && xi_set.indexOf(ss) >= 0 && (ss === "食神" || ss === "伤官" || ss === "正财" || ss === "偏财") && dy_fav) { light = "green"; text = "食伤/财星为喜且运程相佐，可小步试水副业或创业，验证后再放大投入。"; }
+      else if (dy_bad || curScore <= -0.3) { light = "red"; text = "忌运/动能偏弱，不宜押重金创业，先以主业稳收、控制试错成本。"; }
+      else { light = "amber"; text = "创业可先以副业试水，控制投入、跑通模式后再考虑放大。"; }
+      decisions.push({ name: "创业 / 副业", light: light, text: text });
+    })();
+    (function () { // 婚恋 / 同居
+      var m = dimOf["婚姻"]; var lv = m ? m.mean_level : 3; var cons = m ? m.consistency : "中一致"; var light, text;
+      if (lv >= 4 && cons === "高一致") { light = "green"; text = "感情缘分较顺且体系一致，可稳步推进关系、择时而定。"; }
+      else if (lv < 3) { light = "red"; text = "今年婚缘波折之象偏重，重大决定缓步，婚前把财产与期待谈清、防外部干扰。"; }
+      else { light = "amber"; text = "重精神契合、多沟通；晚婚或成熟后更稳，别被催婚推着走。"; }
+      decisions.push({ name: "婚恋 / 同居", light: light, text: text });
+    })();
+    (function () { // 买房 / 大宗消费
+      var ss = cur ? cur.shi_shen : "", light, text;
+      if (curScore <= -0.3) { light = "red"; text = "今年不宜大宗支出与新增负债，先保现金流、留足备用金。"; }
+      else if (curScore >= 0.3 && !(cur && ji_set.indexOf(ss) >= 0 && (ss === "正财" || ss === "偏财"))) { light = "green"; text = "可择机购置，但先做好预算与退路，不透支、不勉强加杠杆。"; }
+      else { light = "amber"; text = "大宗消费可择机，量入为出、留足备用金，不冲动负债。"; }
+      decisions.push({ name: "买房 / 大宗消费", light: light, text: text });
+    })();
+    (function () { // 远行 / 搬家 / 换城市
+      var m = dimOf["时机运势"]; var lv = m ? m.mean_level : 3; var light, text;
+      if (lv >= 4) { light = "green"; text = "今年利变动与远行，换城市/搬迁可把握窗口推进。"; }
+      else if (lv < 3) { light = "red"; text = "今年宜静不宜动，远行/搬家/大迁徙尽量缓一缓。"; }
+      else { light = "amber"; text = "变动可择机，但先安顿好现有摊子、备好退路再动。"; }
+      decisions.push({ name: "远行 / 搬家", light: light, text: text });
+    })();
+
+    // 3) 该做 / 别做 / 留意（按优先级合成）
+    var doL = [], dontL = [], watchL = [];
+    (cv.life_guidance.strengths || []).slice(0, 2).forEach(function (s) { doL.push(s); });
+    if (winCls === "hi") doL.push("把握今年「进攻窗口」，把酝酿已久的关键目标（晋升 / 考证 / 重要合作）往前推。");
+    else if (winCls === "mid") doL.push("把能力与资源做厚、把口碑做扎实，为下一个进攻窗口蓄力。");
+    else doL.push("防守年里，把风险敞口降到最低、先稳住现有摊子；也是补齐能力短板与信用的好时机——少动多看，等窗口回来再出手。");
+    (cv.life_guidance.cautions || []).slice(0, 3).forEach(function (c) { dontL.push(c); });
+    if (winCls !== "hi") dontL.push("今年不辞职、不盲目投资、不替人担保、重大合同反复审、重大决策暂缓。");
+    var healthM = dimOf["健康"];
+    if (healthM && healthM.mean_level < 3) dontL.push("健康提示偏多：别拿身体好赌、别长期透支，安排一次针对性体检。");
+    cv.review_flags.forEach(function (f) { watchL.push(f); });
+    cv.matrix.forEach(function (m) { if (m.consistency === "分歧") watchL.push("维度「" + m.dimension + "」各体系结论分歧较大，相关决策放慢、以现实反馈校准。"); });
+    if (cur && cur.key_months && cur.key_months.watch && cur.key_months.watch.length)
+      watchL.push("今年宜谨慎月份：" + cur.key_months.watch.join("；") + "（冲动/变动多在此类月份，重大决策尽量避开）。");
+    function uniq(a) { var seen = {}, out = []; a.forEach(function (x) { if (!seen[x]) { seen[x] = 1; out.push(x); } }); return out; }
+    doL = uniq(doL).slice(0, 4); dontL = uniq(dontL).slice(0, 4); watchL = uniq(watchL).slice(0, 4);
+
+    // 4) 能量节奏管理（教用户用运势曲线自我管理：好年攻、坏年守）
+    var nowYear = cur ? cur.year : liu.now_year;
+    var nextWin = null, nextDef = null;
+    liu.rows.forEach(function (r) {
+      if (r.year <= nowYear) return;
+      if (!nextWin && (r.score >= 1.2 || (r.dayun_gz !== "—" && xi_set.indexOf(ten_god(day_gan, r.dayun_gz[0])) >= 0))) nextWin = r;
+      if (!nextDef && r.score <= -1.2) nextDef = r;
+    });
+    var rhythm = {
+      next_window: nextWin ? (nextWin.year + " 年（约 " + (nextWin.year - nowYear) + " 年后，" + gz2(nextWin.gz) + "，评分 " + nextWin.score + "）") : "未来数年以平/守为主，暂无明显进攻大年",
+      next_defend: nextDef ? (nextDef.year + " 年（约 " + (nextDef.year - nowYear) + " 年后，" + gz2(nextDef.gz) + "，评分 " + nextDef.score + "）") : "暂无显著下行大年",
+      principle: "好年攻、坏年守：在「进攻窗口」集中资源办大事、敢争取；在「防守期」收敛开支、降杠杆、把决策节奏放慢。用这份逐年曲线，你就能自己判断——接下来哪几年该冲、哪几年该忍。"
+    };
+
+    // 5) 自我觉察提示（把术语翻译成自省，而非宿命恐吓）
+    var weakAct = bazi.strength === "身弱" ? "独立扛事、单兵冒进、不好意思求助"
+      : bazi.strength === "身旺" ? "过度进取、什么都想抓、赢了面子输了里子" : "时而冒进、时而犹疑，节奏容易乱";
+    var xiPhrase = bazi.strength === "中和" ? ("「" + (xi_set.join("、") || "需细参") + "」（中和之日主，喜用随大运流转，临事可借喜运发力）") : ("「" + (xi_set.join("、") || "需细参") + "」");
+    var selfAware = [
+      "你日主" + bazi.day_element + "（" + day_gan + "）" + bazi.strength + "，用神宜取" + xiPhrase + "。这提示你天生在「" + weakAct + "」上容易吃亏。",
+      "做重大决定前，先问自己两问：(1) 这是顺势而为，还是赌一口气？(2) 最坏情况我兜不兜得住？——两个答案都踏实，再下手。",
+      "本系统所有结论都是「决策参考 + 自我觉察」而非定数：把交叉验证里高一致的维度当「预警与机会」，把分歧的维度当「需现实验证的假设」。"
+    ];
+
+    return {
+      window: { verdict: win, cls: winCls, why: winWhy },
+      decisions: decisions,
+      do_list: doL, dont_list: dontL, watch_list: watchL,
+      rhythm: rhythm, self_aware: selfAware
+    };
+  }
+
   function cross_validate(bazi, ziwei, yijing, tieban, face, palm) {
     var bs = bazi_signals(bazi), zs = ziwei_signals(ziwei), ys = yijing_signals(yijing, bazi), ts_v = tieban_signals(tieban);
     var ts = ts_v[0], tieban_votes = ts_v[1];
@@ -1114,6 +1241,7 @@
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
     var dayun_detail = _dayun_detail(b, solar.getFullYear());
+    var action_playbook = _action_playbook(b, cv, liu);
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
     var radar_wuxing = radar_svg(ELEMENTS, ELEMENTS.map(function (e) { return b.element_count[e]; }), { title: "五行分布", max: 8 });
@@ -1134,7 +1262,7 @@
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
       liunian: liu, ziwei_svg: ziwei_svg, fortune_svg: fortune_svg, radar_wuxing: radar_wuxing,
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, elem_data: elem_data,
-      mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail,
+      mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail, action_playbook: action_playbook,
       face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
       palm: palmSig ? { signals: palmSig, obs: meta.palmObs, px: meta.palmPx, img: meta.palmImg } : null
     };
@@ -1143,7 +1271,7 @@
   return {
     C: { GAN: GAN, ZHI: ZHI, GZ60: GZ60, ELEMENTS: ELEMENTS, ELEMENT_COLOR: ELEMENT_COLOR, CITY_LONGITUDE: CITY_LONGITUDE, SIHUA: SIHUA, TEN_GOD: TEN_GOD, ZIWEI_PALACES: ZIWEI_PALACES },
     analyze: analyze, compute_bazi: compute_bazi, compute_ziwei: compute_ziwei, meihua_qigua: meihua_qigua,
-    compute_tieban: compute_tieban, cross_validate: cross_validate, compute_liunian: compute_liunian,
+    compute_tieban: compute_tieban, cross_validate: cross_validate, compute_liunian: compute_liunian, action_playbook: _action_playbook,
     face_signals: face_signals, palm_signals: palm_signals,
     build_ziwei_svg: build_ziwei_svg, fortune_trend_svg: fortune_trend_svg, radar_svg: radar_svg, liunian_sihua_svg: liunian_sihua_svg,
     correct_to_solar: correct_to_solar, nayin_name: nayin_name
