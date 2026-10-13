@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>命理交叉验证分析报告</title>
+<title>天命系统分析报告</title>
 <style>
   :root{ --bg:#f5f6f8; --card:#fff; --ink:#1f2733; --muted:#6b7785;
          --line:#e6e9ee; --accent:#8a5a2b; --accent2:#2b5a8a; }
@@ -68,7 +68,7 @@
   <input type="hidden" id="inp-minute" value="{{birth.minute}}">
   <input type="hidden" id="inp-gender" value="{{gender}}">
   <input type="hidden" id="inp-birthplace" value="{{geo.birthplace}}">
-  <h1>命理交叉验证分析报告</h1>
+  <h1>天命系统分析报告</h1>
   <div class="sub">
     阳历 {{birth.year}}年{{birth.month}}月{{birth.day}}日 {{birth.hour}}:{{'%02d'%birth.minute}}（北京时间）｜ {{gender}} ｜ 生肖 {{bazi.zodiac}}<br>
     出生地 {{geo.birthplace}}（东经{{geo.longitude}}°）｜ 标准时差 {{geo.delta_h}}h ｜ 时差方程 {{geo.eot}}min ｜ 真太阳时 {{geo.solar_birth.hour}}:{{'%02d'%geo.solar_birth.minute}}

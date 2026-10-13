@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""命理交叉验证系统 · Flask 交互原型。
+"""天命系统 · Flask 交互原型。
 启动：python app.py  -> 浏览器打开 http://127.0.0.1:5000
 """
 import datetime

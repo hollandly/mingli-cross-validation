@@ -1,4 +1,4 @@
-# 命理交叉验证系统（MingLi Cross-Validation System）
+# 天命系统（Tianming Cross-Validation System）
 
 将 **四柱八字、紫微斗数、周易、铁板神数** 四套传统命理体系，统一映射到 7 个人生维度，
 进行多源交叉验证，输出分级结论。详见 `framework.md`（方法论框架）。
@@ -7,7 +7,7 @@
 
 ### 方式一：浏览器单机版（推荐，零环境、双击即用）
 
-`web/命理交叉验证系统.html` 是**单文件、纯前端**版本 —— 历法库、四套引擎、图表与录入界面
+`web/天命系统.html` 是**单文件、纯前端**版本 —— 历法库、四套引擎、图表与录入界面
 全部内联，无需联网、无需安装、无需服务器。直接**双击**用浏览器打开，填写出生信息即可生成完整报告：
 
 - 四柱八字（四柱表 / 日主强弱 / 大运 / **五行·十神雷达图**）
@@ -60,12 +60,12 @@ MingLi_System/
     ├── index.html        # 输入表单
     └── report.html       # 分析报告页
 └── web/
-    ├── 命理交叉验证系统.html  # ★ 单文件浏览器版（双击即用，推荐）
+    ├── 天命系统.html  # ★ 单文件浏览器版（双击即用，推荐）
     ├── lunar.js             # 历法底层（lunar-javascript，仅浏览器版依赖）
     └── engines.js           # 四套引擎 + 图表 + 交叉验证（浏览器版源码）
 ```
 
-> `web/命理交叉验证系统.html` 由 `web/lunar.js` + `web/engines.js` 静态内联生成；
+> `web/天命系统.html` 由 `web/lunar.js` + `web/engines.js` 静态内联生成；
 > `web/engines.js` 与 `engine/*.py` 流派约定一致，可独立在 Node 中 `require` 调用 `ML.analyze()`。
 
 ## 说明与边界

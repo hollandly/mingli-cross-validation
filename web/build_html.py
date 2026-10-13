@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Build a single self-contained HTML file for the 命理交叉验证系统.
+"""Build a single self-contained HTML file for the 天命系统.
 Inlines web/lunar.js and web/engines.js, plus the report UI, into one file.
 """
 import io, os
@@ -13,7 +13,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>命理交叉验证系统 · 录入与报告</title>
+<title>天命系统 · 录入与报告</title>
 <style>
   :root{
     --ink:#2b2620; --paper:#f7f2e7; --paper2:#fffdf8; --line:#e3d9c2;
@@ -158,7 +158,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>命理交叉验证系统</h1>
+    <h1>天命系统</h1>
     <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
   </header>
   <div class="disclaimer">
@@ -271,7 +271,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   <!-- 报告容器 -->
   <div id="report" class="hidden"></div>
 
-  <footer>命理交叉验证系统 · 纯浏览器本地运算（数据不上传）· 传统文化研究工具</footer>
+  <footer>天命系统 · 纯浏览器本地运算（数据不上传）· 传统文化研究工具</footer>
 </div>
 
 <!-- ============ 历法底层 ============ -->
@@ -837,6 +837,6 @@ TEMPLATE = r"""<!DOCTYPE html>
 """
 
 out = TEMPLATE.replace("<<<LUNAR_JS>>>", lunar).replace("<<<ENGINES_JS>>>", engines)
-dest = os.path.join(WEB, "命理交叉验证系统.html")
+dest = os.path.join(WEB, "天命系统.html")
 open(dest, "w", encoding="utf-8").write(out)
 print("written:", dest, "bytes:", len(out.encode("utf-8")), "lunar:", len(lunar), "engines:", len(engines))
