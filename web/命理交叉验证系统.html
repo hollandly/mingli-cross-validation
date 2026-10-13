@@ -149,7 +149,7 @@
       <span class="calhint" id="calHint">中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。</span>
     </div>
     <div class="field" style="grid-column:1/-1">
-      <label class="switch"><input type="checkbox" id="f_xiang"> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
+      <label class="switch"><input type="checkbox" id="f_xiang" checked> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
     </div>
     <div class="form-grid">
       <div class="field"><label id="lbl_year">出生年份（农历）</label><select id="f_year"></select></div>
@@ -173,7 +173,7 @@
   </div>
 
   <!-- 相学采录 -->
-  <div class="card hidden" id="xiangCard">
+  <div class="card" id="xiangCard">
     <h2>相学采录（面相 / 手相）</h2>
     <div class="note">照片仅在本地浏览器处理与绘制，<b>不会上传任何服务器</b>。面相/手相为辅助维度，须与命理四体系互参，结论不单独作断。</div>
     <div class="field" style="grid-column:1/-1">
@@ -192,7 +192,12 @@
         <label class="btn ghost">上传照片<input type="file" id="fileIn" accept="image/*" hidden></label>
       </div>
     </div>
-    <div class="tonebox" id="toneBox">气色判定：待采集（先选「照片类型」，再拍照或上传）</div>
+    <div class="tonebox" id="toneBox">气色判定：待采集（先选上方「照片类型」，再拍照或上传）</div>
+    <div class="note" style="margin-top:8px;line-height:1.8">
+      <b>气色五行判定原理（浏览器本地计算 · 照片绝不上传）：</b>系统把照片缩为 40×40 采样，取平均 RGB 判定<b>主色</b>与<b>明亮度</b>，再按传统相学「五色配五行」映射为佐证之气——
+      <span style="color:var(--red)">红=火</span>、<span style="color:var(--gold,#b8860b)">白=金</span>、<span style="color:var(--green)">青=木</span>、<span style="color:var(--blue,#2f6fdb)">黑=水</span>、<span style="color:var(--brown,#8a5a2b)">黄=土</span>；
+      明亮度高=气色清朗、低=气色偏沉。此为<b>客观像素佐证</b>，须与您观察勾选的五官/掌纹特征、以及命理四柱互参，<b>不作医疗或命运定论</b>。
+    </div>
     <div class="obs-grid">
       <fieldset class="obs"><legend>面相采录（看着照片勾选）</legend>
         <div class="field"><label>面型</label><select id="xf_mianxing"><option value="">—</option><option>圆润·水</option><option>方正·金</option><option>修长·木</option><option>上尖下阔·火</option><option>厚宽·土</option></select></div>
@@ -9322,42 +9327,42 @@
     var contrib = {}, ev = [];
     function add(dim, w, t) { contrib[dim] = (contrib[dim] || 0) + w; ev.push({ dim: dim, t: t }); }
     var mx = FACE_MIANXING[obs.mianxing];
-    if (mx === "水") add("家庭(六亲)", 0.3, "面型圆润属水：主智、主荫，六亲与人缘较润");
-    else if (mx === "金") { add("性格", 0.3, "面型方正属金：性刚决、有原则"); add("婚姻", 0.2, "面型方正属金：义气分明，感情有主见"); }
-    else if (mx === "木") { add("性格", 0.4, "面型修长属木：仁直、上进"); add("事业", 0.2, "面型修长属木：善规划、宜成长型赛道"); }
-    else if (mx === "火") { add("性格", 0.3, "面型上尖下阔属火：热情外露、反应快"); add("时机运势", 0.2, "面型属火：易有显达之机，亦易起伏"); }
-    else if (mx === "土") { add("财运", 0.4, "面型厚宽属土：诚信稳重，财有库"); add("事业", 0.2, "面型厚宽属土：踏实可信，事业靠积累"); }
-    if (obs.shangting === "饱满") { add("家庭(六亲)", 0.4, "上停(额)饱满：早年顺、父荫与智力佳"); add("性格", 0.2, "上停饱满：思虑清明"); }
-    else if (obs.shangting === "窄陷") { add("家庭(六亲)", -0.3, "上停窄陷：早年与父缘或欠顺"); add("性格", -0.2, "上停窄陷：易多思"); }
-    if (obs.zhongting === "鼻丰") { add("事业", 0.4, "中停鼻丰(土)：中年事业有靠、执行力强"); add("财运", 0.3, "鼻为财帛宫丰隆：财源可聚"); }
-    else if (obs.zhongting === "鼻陷") { add("事业", -0.3, "中停鼻陷：中年事业助力弱"); add("财运", -0.3, "鼻陷：守财宜谨慎"); }
-    if (obs.xiating === "方圆") { add("财运", 0.3, "下停(颔腮)方圆：晚景与子禄丰实"); add("家庭(六亲)", 0.2, "下停方圆：晚年家庭安稳"); }
-    else if (obs.xiating === "尖削") { add("财运", -0.3, "下停尖削：晚景财禄宜早蓄"); }
+    if (mx === "水") add("家庭(六亲)", 0.3, "面型圆润属水（传统相学「水形主智、主荫」）：肾气通于耳，六亲缘分与人缘较润泽");
+    else if (mx === "金") { add("性格", 0.3, "面型方正属金（金主义、性刚）：有原则、决断明快"); add("婚姻", 0.2, "面型方正属金：义气分明，感情中有主见"); }
+    else if (mx === "木") { add("性格", 0.4, "面型修长属木（木主仁、主生发）：仁直上进、善规划"); add("事业", 0.2, "面型修长属木：宜成长型赛道与专业深耕"); }
+    else if (mx === "火") { add("性格", 0.3, "面型上尖下阔属火（火主礼、外露）：热情反应快、易显达"); add("时机运势", 0.2, "面型属火：机遇与起伏并存，宜乘势亦防躁"); }
+    else if (mx === "土") { add("财运", 0.4, "面型厚宽属土（土主信、主库）：诚信稳重，财有根基"); add("事业", 0.2, "面型厚宽属土：踏实可信，事业靠积累而成"); }
+    if (obs.shangting === "饱满") { add("家庭(六亲)", 0.4, "上停（额为离火、主早年与父荫）饱满：早年顺、智力佳"); add("性格", 0.2, "上停饱满：思虑清明、胸有丘壑"); }
+    else if (obs.shangting === "窄陷") { add("家庭(六亲)", -0.3, "上停窄陷：早年与父缘或欠顺，宜自强立基"); add("性格", -0.2, "上停窄陷：易多思、临事宜果断"); }
+    if (obs.zhongting === "鼻丰") { add("事业", 0.4, "中停鼻丰（鼻为土、财帛宫）丰隆：中年事业有靠、执行力强"); add("财运", 0.3, "鼻丰为财帛宫得地：财源可聚、宜理财"); }
+    else if (obs.zhongting === "鼻陷") { add("事业", -0.3, "中停鼻陷：中年事业助力偏弱，宜借平台"); add("财运", -0.3, "鼻陷：守财宜谨慎、防漏财"); }
+    if (obs.xiating === "方圆") { add("财运", 0.3, "下停（颔腮为地阁）方圆：晚景与子禄丰实"); add("家庭(六亲)", 0.2, "下停方圆：晚年家庭安稳、有依靠"); }
+    else if (obs.xiating === "尖削") { add("财运", -0.3, "下停尖削：晚景财禄宜早蓄、忌散漫"); }
     var wg = obs.wuguan || {};
-    if (wg.er === "佳") { add("家庭(六亲)", 0.3, "耳(肾/水)轮廓佳：肾气足、祖荫与听力好"); add("健康", 0.2, "耳佳：肾系统平顺"); }
-    else if (wg.er === "弱") { add("家庭(六亲)", -0.3, "耳弱/招风：肾气偏弱，早年间或有耗"); add("健康", -0.2, "耳弱：留意肾/听力"); }
-    if (wg.mei === "佳") { add("性格", 0.2, "眉(肝/木)清秀：性情中和"); add("事业", 0.2, "眉佳：谋略有序"); }
-    else if (wg.mei === "弱") { add("性格", -0.2, "眉杂/逆：性急易躁"); }
-    if (wg.yan === "佳") { add("性格", 0.2, "眼(心/火)有神：心智明亮"); add("时机运势", 0.2, "眼神清亮：时机判断佳"); }
+    if (wg.er === "佳") { add("家庭(六亲)", 0.3, "耳（肾开窍于耳、属水）轮廓分明：肾气足、祖荫与听力好"); add("健康", 0.2, "耳佳：肾系统平顺、先天禀赋好"); }
+    else if (wg.er === "弱") { add("家庭(六亲)", -0.3, "耳弱/招风：肾气偏弱，早年间或有耗散"); add("健康", -0.2, "耳弱：留意肾与听力、勿过劳"); }
+    if (wg.mei === "佳") { add("性格", 0.2, "眉（肝华在眉、属木）清秀：性情中和"); add("事业", 0.2, "眉佳：谋略有序、善协调"); }
+    else if (wg.mei === "弱") { add("性格", -0.2, "眉杂/逆：性急易躁、宜修涵养"); }
+    if (wg.yan === "佳") { add("性格", 0.2, "眼（心之官、属火）有神：心智明亮、判断清"); add("时机运势", 0.2, "眼神清亮：临机有断、时机判断佳"); }
     else if (wg.yan === "弱") { add("时机运势", -0.2, "眼神黯/无神：临事宜缓、多核再决"); }
-    if (wg.bi === "佳") { add("财运", 0.3, "鼻(脾/土)挺阔：财库丰"); add("事业", 0.2, "鼻佳：中年运稳"); }
-    else if (wg.bi === "弱") { add("财运", -0.3, "鼻弱/露孔：财易漏，宜储蓄"); }
-    if (wg.kou === "佳") { add("婚姻", 0.2, "口(肺/金)端正：言语有度，感情沟通佳"); add("健康", 0.2, "口佳：脾胃纳运好"); }
-    else if (wg.kou === "弱") { add("婚姻", -0.2, "口歪/薄：沟通易生误，感情多体谅"); }
-    if (obs.qise === "红润") { add("时机运势", 0.3, "气色红润：气血畅、时机佳"); add("健康", 0.2, "红润：心气足"); }
-    else if (obs.qise === "黄润") { add("财运", 0.2, "气色黄润(土)：脾胃纳运好、财稳"); add("健康", 0.2, "黄润：土气充"); }
-    else if (obs.qise === "青暗") { add("健康", -0.3, "气色青暗：肝/气机郁，宜疏解"); add("时机运势", -0.2, "青暗：近期宜守"); }
-    else if (obs.qise === "苍白") { add("健康", -0.2, "气色苍白(金过)：肺卫偏弱，防外感"); }
+    if (wg.bi === "佳") { add("财运", 0.3, "鼻（脾之部、属土）挺阔：财库丰盈"); add("事业", 0.2, "鼻佳：中年运稳、承载力强"); }
+    else if (wg.bi === "弱") { add("财运", -0.3, "鼻弱/露孔：财易漏，宜储蓄节流"); }
+    if (wg.kou === "佳") { add("婚姻", 0.2, "口（肺之窍、属金）端正：言语有度，感情沟通佳"); add("健康", 0.2, "口佳：脾胃纳运好、后天之本足"); }
+    else if (wg.kou === "弱") { add("婚姻", -0.2, "口歪/薄：沟通易生误，感情多体谅包容"); }
+    if (obs.qise === "红润") { add("时机运势", 0.3, "气色红润（火得其位）：气血畅达、时机佳"); add("健康", 0.2, "红润：心气足、营卫和"); }
+    else if (obs.qise === "黄润") { add("财运", 0.2, "气色黄润（土气充）：脾胃纳运好、财稳"); add("健康", 0.2, "黄润：土气充、中州安"); }
+    else if (obs.qise === "青暗") { add("健康", -0.3, "气色青暗（木郁）：肝/气机不舒，宜疏解"); add("时机运势", -0.2, "青暗：近期宜守、忌躁进"); }
+    else if (obs.qise === "苍白") { add("健康", -0.2, "气色苍白（金过伤营）：肺卫偏弱，防外感"); }
     else if (obs.qise === "晦暗") { add("时机运势", -0.3, "气色晦暗：运势暂滞，蓄势待时"); }
     if (px && px.tone && TONE_ELEM[px.tone]) {
       var pe = TONE_ELEM[px.tone], pdim = XIANG_ELEM_DIM[pe];
-      add(pdim, px.brightness > 0.55 ? 0.6 : 0.3, "【自动·像素气色】照片主色偏" + px.tone + "属" + pe + "行，明亮度" + (px.brightness > 0.55 ? "高" : "中") + "：佐证" + pdim + "之气");
+      add(pdim, px.brightness > 0.55 ? 0.6 : 0.3, "【自动·像素气色】照片主色偏" + px.tone + "、明亮度" + (px.brightness > 0.55 ? "高" : "中") + "（红=火/白=金/青=木/黑=水/黄=土）：以客观像素佐证" + pdim + "（" + pe + "行）之气");
     }
     (obs.zhiwen || []).forEach(function (z) {
-      if (z === "奸门(眼尾)痣/纹") add("婚姻", -0.2, "奸门(眼尾)见痣纹：夫妻宫受扰，感情宜多沟通");
-      else if (z === "法令清晰") add("事业", 0.2, "法令清晰：威仪与执行力佳");
-      else if (z === "印堂窄/纹乱") add("性格", -0.2, "印堂窄乱：易忧思，临事缓决");
-      else if (z === "人中有痣/陷") add("家庭(六亲)", -0.2, "人中有痣/陷：子女缘宜留意");
+      if (z === "奸门(眼尾)痣/纹") add("婚姻", -0.2, "奸门（眼尾、妻妾宫）见痣纹：夫妻宫受扰，感情宜多沟通");
+      else if (z === "法令清晰") add("事业", 0.2, "法令（主威仪、晚年权柄）清晰：执行力与口碑佳");
+      else if (z === "印堂窄/纹乱") add("性格", -0.2, "印堂（主思虑）窄乱：易忧思，临事缓决");
+      else if (z === "人中有痣/陷") add("家庭(六亲)", -0.2, "人中（主子女、沟洫）有痣/陷：子女缘宜留意养护");
     });
     return _xiang_aggregate(contrib, ev);
   }
@@ -9365,28 +9370,28 @@
     var contrib = {}, ev = [];
     function add(dim, w, t) { contrib[dim] = (contrib[dim] || 0) + w; ev.push({ dim: dim, t: t }); }
     var px_ = PALM_XING[obs.palmxing];
-    if (px_ === "金") { add("婚姻", 0.3, "掌型方硬属金：果决、感情有边界"); add("性格", 0.2, "金型掌：刚毅"); }
-    else if (px_ === "木") { add("性格", 0.4, "掌型修长属木：仁善、善思"); add("事业", 0.2, "木型掌：宜文职/技艺"); }
-    else if (px_ === "水") { add("家庭(六亲)", 0.3, "掌型圆润属水：聪慧、人缘润"); add("时机运势", 0.2, "水型掌：机变灵活"); }
-    else if (px_ === "火") { add("性格", 0.3, "掌型尖削属火：热情、易起伏"); add("时机运势", 0.2, "火型掌：易有机遇亦易波动"); }
-    else if (px_ === "土") { add("财运", 0.4, "掌型厚实属土：诚信、财有库"); add("事业", 0.2, "土型掌：踏实积累"); }
-    if (obs.life === "深长清晰") add("健康", 0.5, "生命线深长清晰：先天体质与生命力强");
+    if (px_ === "金") { add("婚姻", 0.3, "掌型方硬属金（金主义、有界）：果决、感情有边界"); add("性格", 0.2, "金型掌：刚毅、重信诺"); }
+    else if (px_ === "木") { add("性格", 0.4, "掌型修长属木（木主仁、善思）：仁善、宜文技艺业"); add("事业", 0.2, "木型掌：宜文职/技艺、靠专业立身"); }
+    else if (px_ === "水") { add("家庭(六亲)", 0.3, "掌型圆润属水（水主智、主变）：聪慧、人缘润"); add("时机运势", 0.2, "水型掌：机变灵活、善借势"); }
+    else if (px_ === "火") { add("性格", 0.3, "掌型尖削属火（火主礼、易动）：热情、易起伏"); add("时机运势", 0.2, "火型掌：易有机遇亦易波动，宜稳进"); }
+    else if (px_ === "土") { add("财运", 0.4, "掌型厚实属土（土主信、主库）：诚信、财有根基"); add("事业", 0.2, "土型掌：踏实积累、靠口碑成事"); }
+    if (obs.life === "深长清晰") add("健康", 0.5, "生命线（主先天体质与生命力）深长清晰：禀赋强、抗病佳");
     else if (obs.life === "浅短") add("健康", -0.4, "生命线浅短：体质偏弱，宜早养、勿透支");
     else if (obs.life === "中断/岛纹") add("健康", -0.5, "生命线见中断/岛纹：健康有波，定期体检、重大事宜谨慎");
-    if (obs.wisdom === "长而清晰") { add("性格", 0.4, "智慧线长清：思维缜密、善谋"); add("事业", 0.2, "智慧线佳：专业力强"); }
+    if (obs.wisdom === "长而清晰") { add("性格", 0.4, "智慧线（主思维与谋略）长清：缜密善谋"); add("事业", 0.2, "智慧线佳：专业力强、宜技术路线"); }
     else if (obs.wisdom === "短而乱") add("性格", -0.2, "智慧线短乱：思虑易散，重大决策多核");
-    if (obs.emotion === "清晰无杂") add("婚姻", 0.4, "感情线清晰：情感稳定、婚恋顺");
+    if (obs.emotion === "清晰无杂") add("婚姻", 0.4, "感情线（主情缘）清晰：情感稳定、婚恋顺");
     else if (obs.emotion === "断裂/杂纹多") add("婚姻", -0.4, "感情线断裂杂：情感波折，宜多沟通、晚婚更稳");
-    if (obs.wealth === "清晰") add("财运", 0.4, "财运线/玉柱纹清晰：财源可聚、有规划");
-    else if (obs.wealth === "不明显") add("财运", -0.2, "财运线不显：财凭技艺与因缘，宜节流");
+    if (obs.wealth === "清晰") add("财运", 0.4, "财运线/玉柱纹（主财源）清晰：财可聚、有规划");
+    else if (obs.wealth === "不明显") add("财运", -0.2, "财运线不显：财凭技艺与因缘，宜节流蓄");
     if (obs.finger === "修长") add("性格", 0.2, "手指修长：心细、善艺");
     else if (obs.finger === "短粗") add("性格", -0.1, "手指短粗：性直、重实干");
     if (px && px.tone && TONE_ELEM[px.tone]) {
       var pe = TONE_ELEM[px.tone], pdim = XIANG_ELEM_DIM[pe];
-      add(pdim, px.brightness > 0.55 ? 0.5 : 0.3, "【自动·像素气色】掌色偏" + px.tone + "属" + pe + "行：佐证" + pdim + "之气");
+      add(pdim, px.brightness > 0.55 ? 0.5 : 0.3, "【自动·像素气色】掌色偏" + px.tone + "、明亮度" + (px.brightness > 0.55 ? "高" : "中") + "（红=火/白=金/青=木/黑=水/黄=土）：以客观像素佐证" + pdim + "（" + pe + "行）之气");
     }
-    if (obs.pcolor === "红润") { add("健康", 0.2, "掌色红润：气血足"); add("时机运势", 0.2, "掌色红润：时机佳"); }
-    else if (obs.pcolor === "青白") add("健康", -0.2, "掌色青白：气血偏弱，宜调补");
+    if (obs.pcolor === "红润") { add("健康", 0.2, "掌色红润（火得其位）：气血足"); add("时机运势", 0.2, "掌色红润：时机佳、可主动"); }
+    else if (obs.pcolor === "青白") add("健康", -0.2, "掌色青白（木金偏胜）：气血偏弱，宜调补");
     return _xiang_aggregate(contrib, ev);
   }
   // 人生指导总览：综合四体系交叉验证结果，产出分维度建议 + 优势/短板 + 大运阶段策略 + 综合总览
@@ -10155,15 +10160,15 @@
     // 相学分析（面相 / 手相）
     if(ctx.face || ctx.palm){
       H.push('<div class="card"><h2>相学分析（面相 / 手相）</h2>');
-      H.push('<div class="note">相学为辅助维度：照片像素气色由浏览器本地自动判定，特征由您观察勾选；结论须与命理体系互参，不单独作断。</div>');
+      H.push('<div class="note">相学为<b>辅助维度</b>：照片「气色五行」由浏览器<b>本地像素</b>自动判定（红=火 / 白=金 / 青=木 / 黑=水 / 黄=土，照片绝不上传），面相/手相特征由您对照照片勾选；所有信号须与命理四柱/紫微/易/铁板<b>互参</b>，不单独作断，亦非医疗诊断。</div>');
       H.push('<div class="two">');
       if(ctx.face){
         H.push('<div><h3>面相照片</h3>'+(ctx.face.img?'<img src="'+ctx.face.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
-        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'，明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       if(ctx.palm){
         H.push('<div><h3>手相照片</h3>'+(ctx.palm.img?'<img src="'+ctx.palm.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
-        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'，明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       H.push('</div>');
       var DIMS7=["性格","事业","财运","婚姻","家庭(六亲)","健康","时机运势"];
@@ -10363,10 +10368,11 @@
       }
       if(document.getElementById("f_xiang").checked){
         var faceObs=collectFace(), palmObs=collectPalm();
-        var obsAny = anyObs(faceObs) || anyObs(palmObs);
-        if(!xiState.face && !xiState.palm && !obsAny) throw new Error("已开启相学分析，但还没有任何照片或特征。请先拍照/上传至少一张，或在面相/手相采录里勾选特征。");
-        if(xiState.face || anyObs(faceObs)){ meta.faceObs=faceObs; meta.facePx=xiState.face?xiState.face.px:null; meta.faceImg=xiState.face?xiState.face.img:null; }
-        if(xiState.palm || anyObs(palmObs)){ meta.palmObs=palmObs; meta.palmPx=xiState.palm?xiState.palm.px:null; meta.palmImg=xiState.palm?xiState.palm.img:null; }
+        var faceUsed=!!(xiState.face || anyObs(faceObs));
+        var palmUsed=!!(xiState.palm || anyObs(palmObs));
+        if(faceUsed){ meta.faceObs=faceObs; meta.facePx=xiState.face?xiState.face.px:null; meta.faceImg=xiState.face?xiState.face.img:null; }
+        if(palmUsed){ meta.palmObs=palmObs; meta.palmPx=xiState.palm?xiState.palm.px:null; meta.palmImg=xiState.palm?xiState.palm.img:null; }
+        // 开关开启但未采集任何照片或特征时，视为未启用相学，静默跳过（避免默认开启时误报错）
       }
       var ctx=ML.analyze(sy,smo,sd,sh,smi,gender,city,meta);
       render(ctx);

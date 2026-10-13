@@ -159,7 +159,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       <span class="calhint" id="calHint">中国人多按农历报生辰；系统会自动换算成阳历，并按出生地校正「真太阳时」后再定四柱。</span>
     </div>
     <div class="field" style="grid-column:1/-1">
-      <label class="switch"><input type="checkbox" id="f_xiang"> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
+      <label class="switch"><input type="checkbox" id="f_xiang" checked> <span>开启相学分析（面相 / 手相）· 摄像头或上传照片，<b>本地运算、照片不上传</b></span></label>
     </div>
     <div class="form-grid">
       <div class="field"><label id="lbl_year">出生年份（农历）</label><select id="f_year"></select></div>
@@ -183,7 +183,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <!-- 相学采录 -->
-  <div class="card hidden" id="xiangCard">
+  <div class="card" id="xiangCard">
     <h2>相学采录（面相 / 手相）</h2>
     <div class="note">照片仅在本地浏览器处理与绘制，<b>不会上传任何服务器</b>。面相/手相为辅助维度，须与命理四体系互参，结论不单独作断。</div>
     <div class="field" style="grid-column:1/-1">
@@ -202,7 +202,12 @@ TEMPLATE = r"""<!DOCTYPE html>
         <label class="btn ghost">上传照片<input type="file" id="fileIn" accept="image/*" hidden></label>
       </div>
     </div>
-    <div class="tonebox" id="toneBox">气色判定：待采集（先选「照片类型」，再拍照或上传）</div>
+    <div class="tonebox" id="toneBox">气色判定：待采集（先选上方「照片类型」，再拍照或上传）</div>
+    <div class="note" style="margin-top:8px;line-height:1.8">
+      <b>气色五行判定原理（浏览器本地计算 · 照片绝不上传）：</b>系统把照片缩为 40×40 采样，取平均 RGB 判定<b>主色</b>与<b>明亮度</b>，再按传统相学「五色配五行」映射为佐证之气——
+      <span style="color:var(--red)">红=火</span>、<span style="color:var(--gold,#b8860b)">白=金</span>、<span style="color:var(--green)">青=木</span>、<span style="color:var(--blue,#2f6fdb)">黑=水</span>、<span style="color:var(--brown,#8a5a2b)">黄=土</span>；
+      明亮度高=气色清朗、低=气色偏沉。此为<b>客观像素佐证</b>，须与您观察勾选的五官/掌纹特征、以及命理四柱互参，<b>不作医疗或命运定论</b>。
+    </div>
     <div class="obs-grid">
       <fieldset class="obs"><legend>面相采录（看着照片勾选）</legend>
         <div class="field"><label>面型</label><select id="xf_mianxing"><option value="">—</option><option>圆润·水</option><option>方正·金</option><option>修长·木</option><option>上尖下阔·火</option><option>厚宽·土</option></select></div>
@@ -476,15 +481,15 @@ TEMPLATE = r"""<!DOCTYPE html>
     // 相学分析（面相 / 手相）
     if(ctx.face || ctx.palm){
       H.push('<div class="card"><h2>相学分析（面相 / 手相）</h2>');
-      H.push('<div class="note">相学为辅助维度：照片像素气色由浏览器本地自动判定，特征由您观察勾选；结论须与命理体系互参，不单独作断。</div>');
+      H.push('<div class="note">相学为<b>辅助维度</b>：照片「气色五行」由浏览器<b>本地像素</b>自动判定（红=火 / 白=金 / 青=木 / 黑=水 / 黄=土，照片绝不上传），面相/手相特征由您对照照片勾选；所有信号须与命理四柱/紫微/易/铁板<b>互参</b>，不单独作断，亦非医疗诊断。</div>');
       H.push('<div class="two">');
       if(ctx.face){
         H.push('<div><h3>面相照片</h3>'+(ctx.face.img?'<img src="'+ctx.face.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
-        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'，明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       if(ctx.palm){
         H.push('<div><h3>手相照片</h3>'+(ctx.palm.img?'<img src="'+ctx.palm.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
-        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'，明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'%'):'未采集照片（无自动气色）')+'</div></div>');
+        H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       H.push('</div>');
       var DIMS7=["性格","事业","财运","婚姻","家庭(六亲)","健康","时机运势"];
@@ -684,10 +689,11 @@ TEMPLATE = r"""<!DOCTYPE html>
       }
       if(document.getElementById("f_xiang").checked){
         var faceObs=collectFace(), palmObs=collectPalm();
-        var obsAny = anyObs(faceObs) || anyObs(palmObs);
-        if(!xiState.face && !xiState.palm && !obsAny) throw new Error("已开启相学分析，但还没有任何照片或特征。请先拍照/上传至少一张，或在面相/手相采录里勾选特征。");
-        if(xiState.face || anyObs(faceObs)){ meta.faceObs=faceObs; meta.facePx=xiState.face?xiState.face.px:null; meta.faceImg=xiState.face?xiState.face.img:null; }
-        if(xiState.palm || anyObs(palmObs)){ meta.palmObs=palmObs; meta.palmPx=xiState.palm?xiState.palm.px:null; meta.palmImg=xiState.palm?xiState.palm.img:null; }
+        var faceUsed=!!(xiState.face || anyObs(faceObs));
+        var palmUsed=!!(xiState.palm || anyObs(palmObs));
+        if(faceUsed){ meta.faceObs=faceObs; meta.facePx=xiState.face?xiState.face.px:null; meta.faceImg=xiState.face?xiState.face.img:null; }
+        if(palmUsed){ meta.palmObs=palmObs; meta.palmPx=xiState.palm?xiState.palm.px:null; meta.palmImg=xiState.palm?xiState.palm.img:null; }
+        // 开关开启但未采集任何照片或特征时，视为未启用相学，静默跳过（避免默认开启时误报错）
       }
       var ctx=ML.analyze(sy,smo,sd,sh,smi,gender,city,meta);
       render(ctx);
