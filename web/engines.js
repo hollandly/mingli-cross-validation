@@ -821,6 +821,27 @@
     }
     var reflection = _life_stage(age);
     reflection.age = age;
+    // 当年聚焦：把复盘接到当年流年，给一句"这一年最该忍住 / 抓住 / 稳住的一件事"（让每一年指引更具体）
+    var strongest = null, weakest = null;
+    cv.matrix.forEach(function (m) {
+      if (!strongest || m.mean_level > strongest.mean_level) strongest = m;
+      if (!weakest || m.mean_level < weakest.mean_level) weakest = m;
+    });
+    var watchMonths = (cur && cur.key_months && cur.key_months.watch && cur.key_months.watch.length)
+      ? ("（尤其 " + cur.key_months.watch.join("、") + "月这类冲动月份，先把决策放一放）") : "";
+    var yearFocus;
+    if (winCls === "lo") {
+      var weakDim = weakest ? weakest.dimension : "风险敞口";
+      var weakWhy = (dy_bad ? "当前大运为忌" : "") || (curScore <= -0.3 ? "流年动能偏弱" : "信号偏收敛");
+      yearFocus = { tone: "忍住", text: weakWhy + "，这一年你最该忍住的一件事，是「在『" + weakDim + "』相关的大事上冲动决策」" + watchMonths + "——守成比进攻更重要。" };
+    } else if (winCls === "hi") {
+      var strongDim = strongest ? strongest.dimension : "关键目标";
+      yearFocus = { tone: "抓住", text: "当下是进攻窗口，这一年你最该抓住的一件事，是「在『" + strongDim + "』上借势发力、把它变成具体成果」——敢争取也要留风控底线。" };
+    } else {
+      var midDim = strongest ? strongest.dimension : "现有摊子";
+      yearFocus = { tone: "稳住", text: "今年平稳蓄力，你最该稳住的一件事，是「把『" + midDim + "』的现有摊子与口碑做扎实」——不躁进、不分散精力，等下一个进攻窗口。" };
+    }
+    reflection.year_focus = yearFocus;
 
     return {
       window: { verdict: win, cls: winCls, why: winWhy },

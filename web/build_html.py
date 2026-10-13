@@ -633,6 +633,12 @@ TEMPLATE = r"""<!DOCTYPE html>
     H.push('<h3 class="act-h">自我觉察提示</h3><ul class="tips">');
     ap.self_aware.forEach(function(x){ H.push('<li>'+esc(x)+'</li>'); }); H.push('</ul>');
     if (ap.reflection) {
+      if (ap.reflection.year_focus) {
+        var yf = ap.reflection.year_focus;
+        var ycls = yf.tone === "忍住" ? "grade-bad" : (yf.tone === "抓住" ? "grade-hi" : "grade-mid");
+        H.push('<div class="win-banner ' + ycls + '" style="margin-bottom:8px">今年聚焦 · 最该' + esc(yf.tone) + '的一件事</div>');
+        H.push('<div class="window-why" style="margin-bottom:10px">' + esc(yf.text) + '</div>');
+      }
       H.push('<h3 class="act-h">按人生阶段的复盘问题' + (ap.reflection.age !== null ? ('（' + esc(ap.reflection.stage) + '）') : '') + '</h3>');
       H.push('<div class="window-why">' + esc(ap.reflection.note) + '</div>');
       H.push('<ul class="tips">');
