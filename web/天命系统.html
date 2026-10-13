@@ -11245,5 +11245,7 @@
   renderSaved();
 })();
 </script>
+<!-- 发布页专用：解密后由外壳挂载⚙管理员重加密；本地直接打开时 window.__PUB_mountAdmin 未定义，自动跳过 -->
+<script>if(window.__PUB_mountAdmin){try{window.__PUB_mountAdmin();}catch(e){}}</script>
 </body>
 </html>

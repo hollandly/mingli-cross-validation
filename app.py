@@ -30,9 +30,13 @@
 import datetime
 import os
 import sys
+import json
+import secrets
+import string
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from engine import bazi as B, ziwei as Z, yijing as Y, tieban as T, cross_validation as CV, geo as G, constants as C, liunian as L, chart as CH
 
@@ -43,7 +47,74 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
 
 # 纵深防御：限制请求体大小（当前无文件上传，仅为防滥用/DoS）
-app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+
+# 会话 Cookie 安全基线（本机 127.0.0.1 已安全；部署到 HTTPS 时建议把 SECURE 打开）
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# app.config["SESSION_COOKIE_SECURE"] = True   # 仅 HTTPS 部署时取消注释
+
+# ---------------------------------------------------------------------------
+# 轻量账号体系（本地文件存储，密码经 werkzeug pbkdf2:sha256 哈希，绝不存明文）
+# 仅本应用自身使用；公网部署时请配合强 FLASK_SECRET_KEY 与反向代理鉴权。
+# ---------------------------------------------------------------------------
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
+
+
+def _gen_pw(n=14):
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(n))
+
+
+def _seed_users():
+    """首次运行生成默认账号；环境变量可覆盖初始密码，否则随机并在终端打印。"""
+    admin_pw = os.environ.get("ADMIN_PASSWORD") or _gen_pw()
+    user_pw = os.environ.get("USER_PASSWORD") or _gen_pw()
+    seed = [
+        {"username": "admin", "role": "admin", "pw": generate_password_hash(admin_pw)},
+        {"username": "user", "role": "user", "pw": generate_password_hash(user_pw)},
+    ]
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(seed, f, ensure_ascii=False, indent=2)
+    if not os.environ.get("ADMIN_PASSWORD"):
+        print("【天命系统】管理员 admin 初始密码：", admin_pw)
+    if not os.environ.get("USER_PASSWORD"):
+        print("【天命系统】用户   user 初始密码：", user_pw)
+    print("（以上为首次启动随机密码，请登录后在右上角⚙管理员面板尽快修改）")
+    return seed
+
+
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return _seed_users()
+    with open(USERS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_users(users):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+
+def find_user(username, role=None):
+    for u in load_users():
+        if u["username"] == username and (role is None or u["role"] == role):
+            return u
+    return None
+
+
+def _csrf():
+    """生成/取回会话内 CSRF 令牌（防跨站请求伪造）。"""
+    if "csrf" not in session:
+        session["csrf"] = secrets.token_hex(16)
+    return session["csrf"]
+
+
+def _require_login():
+    return "username" in session  # 1 MB
 
 
 def _parse_birth(form):
@@ -170,11 +241,60 @@ def _assemble_json(ctx):
 
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("index.html", cities=list(C.CITY_LONGITUDE.keys()))
+    csrf = _csrf()
+    return render_template("index.html", cities=list(C.CITY_LONGITUDE.keys()),
+                           authed=_require_login(), role=session.get("role"),
+                           username=session.get("username"), csrf=csrf)
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or request.form
+    if not data.get("csrf") or data.get("csrf") != session.get("csrf"):
+        return jsonify({"ok": False, "msg": "会话已过期，请刷新页面后重试"}), 400
+    role = data.get("role", "user")
+    if role not in ("user", "admin"):
+        return jsonify({"ok": False, "msg": "非法角色"}), 400
+    uname = (data.get("username") or "").strip()
+    pw = data.get("password") or ""
+    u = find_user(uname, role)
+    if not u or not check_password_hash(u["pw"], pw):
+        return jsonify({"ok": False, "msg": "账号或密码错误"}), 401
+    session["username"] = uname
+    session["role"] = role
+    return jsonify({"ok": True, "role": role})
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/change_password", methods=["POST"])
+def admin_change():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "msg": "需要管理员登录"}), 403
+    data = request.get_json(silent=True) or request.form
+    if data.get("csrf") != session.get("csrf"):
+        return jsonify({"ok": False, "msg": "会话已过期，请刷新页面后重试"}), 400
+    target = (data.get("target") or "").strip()
+    neu = data.get("new_password") or ""
+    if not target or len(neu) < 6:
+        return jsonify({"ok": False, "msg": "目标账号与新密码(至少6位)必填"}), 400
+    users = load_users()
+    found = next((u for u in users if u["username"] == target), None)
+    if not found:
+        return jsonify({"ok": False, "msg": "目标账号不存在"}), 404
+    found["pw"] = generate_password_hash(neu)
+    save_users(users)
+    return jsonify({"ok": True, "msg": "已修改 %s 的密码" % target})
 
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
+    if not _require_login():
+        return redirect("/")
     try:
         birth, gender, birthplace = _parse_birth(request.form)
     except Exception as e:
@@ -185,6 +305,8 @@ def analyze():
 
 @app.route("/export_json", methods=["POST"])
 def export_json():
+    if not _require_login():
+        return jsonify({"error": "请先登录"}), 401
     try:
         birth, gender, birthplace = _parse_birth(request.form)
     except Exception as e:

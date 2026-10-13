@@ -10,6 +10,16 @@
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
        background:var(--bg);color:var(--ink);line-height:1.6}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+          padding:10px 18px;background:#fff;border-bottom:1px solid var(--line)}
+  .topbar .brand{font-weight:700;font-size:16px;letter-spacing:1px}
+  .topbar .right{display:flex;gap:10px;align-items:center}
+  .iconbtn{background:#fff;border:1px solid var(--line);border-radius:8px;width:38px;height:38px;
+           font-size:18px;cursor:pointer;color:var(--muted)}
+  .iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ghostbtn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 14px;
+            font-size:14px;cursor:pointer;color:var(--muted)}
+  .ghostbtn:hover{border-color:var(--accent);color:var(--accent)}
   .wrap{max-width:760px;margin:40px auto;padding:0 18px}
   h1{font-size:24px;margin:0 0 4px}
   .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
@@ -21,47 +31,183 @@
   input,select{width:100%;padding:10px 12px;border:1px solid var(--line);
         border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}
   input:focus,select:focus{outline:none;border-color:var(--accent)}
-  button{margin-top:22px;width:100%;padding:13px;background:var(--accent);
+  button.primary{margin-top:22px;width:100%;padding:13px;background:var(--accent);
         color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
-  button:hover{background:#74491f}
+  button.primary:hover{background:#74491f}
   .note{font-size:12px;color:var(--muted);margin-top:14px}
   .err{color:#c0392b;font-size:14px;margin-bottom:12px}
+  .hidden{display:none!important}
+  /* 弹窗 */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;
+        justify-content:center;z-index:50;padding:18px}
+  .modal{width:min(92vw,380px);background:#fff;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 4px;font-size:18px}
+  .modal .msub{font-size:12px;color:var(--muted);margin:0 0 16px}
+  .modal .merr{color:#c0392b;font-size:13px;min-height:16px;margin-top:8px}
+  .modal .x{float:right;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+  .who{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .who b{color:var(--ink)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>天命系统</h1>
-  <div class="sub">四柱八字 · 紫微斗数 · 周易 · 铁板神数 ｜ 多源交叉验证，分级结论</div>
-  <div class="card">
-    {% if error %}<div class="err">{{error}}</div>{% endif %}
-    <form method="post" action="/analyze">
-      <label>出生日期（阳历）</label>
-      <div class="row">
-        <div><input name="year" type="number" placeholder="年" value="1990" required></div>
-        <div><input name="month" type="number" placeholder="月" min="1" max="12" value="5" required></div>
-        <div><input name="day" type="number" placeholder="日" min="1" max="31" value="20" required></div>
-      </div>
-      <label>出生时辰</label>
-      <div class="row">
-        <div><input name="hour" type="number" placeholder="时(0-23)" min="0" max="23" value="12" required></div>
-        <div><input name="minute" type="number" placeholder="分" min="0" max="59" value="0"></div>
-        <div>
-          <select name="gender">
-            <option value="男">男</option>
-            <option value="女">女</option>
-          </select>
-        </div>
-      </div>
-      <label>出生地（用于真太阳时校正，可搜索）</label>
-      <input name="birthplace" id="birthplace" list="cityOptions" autocomplete="off" value="北京" style="width:100%;padding:8px 10px;font-size:14px;box-sizing:border-box;" placeholder="输入或搜索城市，如 杭州 / 西安 / 拉萨">
-      <datalist id="cityOptions">
-        {% for c in cities %}<option value="{{c}}">{% endfor %}
-      </datalist>
-      <div class="note">支持直接搜索；若城市未收录，将按北京时间(东经120°)近似校正真太阳时。</div>
-      <button type="submit">开始交叉验证分析</button>
-    </form>
-    <div class="note">提示：时辰越精确，八字/紫微/周易越稳定；模糊时辰会触发「考时复核」标记。本系统为传统文化研究参考，非医疗/投资/决策建议。</div>
+<div class="topbar">
+  <div class="brand">天命系统</div>
+  <div class="right">
+    <button class="iconbtn" id="settingsBtn" title="设置 / 管理员">⚙</button>
+    <button class="ghostbtn hidden" id="logoutBtn">退出</button>
   </div>
 </div>
+
+<div class="wrap">
+  <!-- 用户登录卡（默认页面，仅用户账号可登） -->
+  <div class="card" id="loginCard">
+    <h1>用户登录</h1>
+    <div class="sub">请输入用户账号与密码以使用天命系统</div>
+    <div class="err" id="loginErr"></div>
+    <label>账号</label>
+    <input id="u_user" placeholder="用户名" autocomplete="username">
+    <label>密码</label>
+    <input id="u_pwd" type="password" placeholder="密码" autocomplete="current-password">
+    <button class="primary" id="loginSubmit">登 录</button>
+    <div class="note">管理员入口不在默认页面：点右上角 ⚙ 图标登录。</div>
+  </div>
+
+  <!-- 工具主界面（登录后显示） -->
+  <div id="tool" class="hidden">
+    <h1>天命系统</h1>
+    <div class="sub">四柱八字 · 紫微斗数 · 周易 · 铁板神数 ｜ 多源交叉验证，分级结论</div>
+    <div class="card">
+      {% if error %}<div class="err">{{error}}</div>{% endif %}
+      <form method="post" action="/analyze">
+        <label>出生日期（阳历）</label>
+        <div class="row">
+          <div><input name="year" type="number" placeholder="年" value="1990" required></div>
+          <div><input name="month" type="number" placeholder="月" min="1" max="12" value="5" required></div>
+          <div><input name="day" type="number" placeholder="日" min="1" max="31" value="20" required></div>
+        </div>
+        <label>出生时辰</label>
+        <div class="row">
+          <div><input name="hour" type="number" placeholder="时(0-23)" min="0" max="23" value="12" required></div>
+          <div><input name="minute" type="number" placeholder="分" min="0" max="59" value="0"></div>
+          <div>
+            <select name="gender">
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
+        </div>
+        <label>出生地（用于真太阳时校正，可搜索）</label>
+        <input name="birthplace" id="birthplace" list="cityOptions" autocomplete="off" value="北京" style="width:100%;padding:8px 10px;font-size:14px;box-sizing:border-box;" placeholder="输入或搜索城市，如 杭州 / 西安 / 拉萨">
+        <datalist id="cityOptions">
+          {% for c in cities %}<option value="{{c}}">{% endfor %}
+        </datalist>
+        <div class="note">支持直接搜索；若城市未收录，将按北京时间(东经120°)近似校正真太阳时。</div>
+        <button type="submit">开始交叉验证分析</button>
+      </form>
+      <div class="note">提示：时辰越精确，八字/紫微/周易越稳定；模糊时辰会触发「考时复核」标记。本系统为传统文化研究参考，非医疗/投资/决策建议。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员弹窗（默认隐藏，点 ⚙ 打开） -->
+<div class="mask hidden" id="adminMask">
+  <div class="modal">
+    <span class="x" id="adminClose">×</span>
+    <!-- 状态A：管理员登录 -->
+    <div id="adminLoginView">
+      <h3>管理员登录</h3>
+      <p class="msub">此入口不在默认用户页面，仅管理员可见</p>
+      <div class="err" id="adminLoginErr"></div>
+      <label>管理员账号</label>
+      <input id="a_user" placeholder="admin" autocomplete="username">
+      <label>管理员密码</label>
+      <input id="a_pwd" type="password" placeholder="密码" autocomplete="current-password">
+      <button class="primary" id="adminLoginSubmit">登 录</button>
+    </div>
+    <!-- 状态B：改密面板 -->
+    <div id="adminPanelView" class="hidden">
+      <h3>修改用户密码</h3>
+      <p class="who">当前管理员：<b id="adminName"></b></p>
+      <label>目标账号（要改密码的用户）</label>
+      <input id="t_user" placeholder="如 user" autocomplete="off">
+      <label>新密码（至少 6 位）</label>
+      <input id="t_pwd" type="password" placeholder="新密码" autocomplete="new-password">
+      <label>确认新密码</label>
+      <input id="t_pwd2" type="password" placeholder="再次输入" autocomplete="new-password">
+      <button class="primary" id="adminChangeSubmit">保 存 修 改</button>
+      <div class="merr" id="adminChangeMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__AUTH = { authed: {{'true' if authed else 'false'}},
+                    role: "{{role or ''}}",
+                    username: "{{username or ''}}",
+                    csrf: "{{csrf}}" };
+</script>
+<script>
+  (function(){
+    var A = window.__AUTH;
+    var $ = function(id){ return document.getElementById(id); };
+    function show(el){ el.classList.remove('hidden'); }
+    function hide(el){ el.classList.add('hidden'); }
+
+    // 初始显隐
+    if (A.authed) { hide($('loginCard')); show($('tool')); show($('logoutBtn')); }
+    else { show($('loginCard')); hide($('tool')); hide($('logoutBtn')); }
+
+    function api(path, payload){
+      return fetch(path, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(Object.assign({csrf:A.csrf}, payload))
+      }).then(function(r){ return r.json().catch(function(){ return {ok:false,msg:'服务异常'}; }); })
+                .then(function(d){ return d; });
+    }
+
+    // 用户登录
+    $('loginSubmit').addEventListener('click', function(){
+      $('loginErr').textContent = '';
+      api('/login', {role:'user', username:$('u_user').value.trim(), password:$('u_pwd').value})
+        .then(function(d){ if(d.ok){ location.reload(); } else { $('loginErr').textContent = d.msg; } });
+    });
+    $('u_pwd').addEventListener('keydown', function(e){ if(e.key==='Enter') $('loginSubmit').click(); });
+
+    // 退出
+    $('logoutBtn').addEventListener('click', function(){
+      api('/logout', {}).then(function(){ location.reload(); });
+    });
+
+    // ⚙ 打开管理员弹窗
+    $('settingsBtn').addEventListener('click', function(){
+      show($('adminMask'));
+      if (A.role === 'admin') { hide($('adminLoginView')); show($('adminPanelView')); $('adminName').textContent = A.username; }
+      else { show($('adminLoginView')); hide($('adminPanelView')); }
+    });
+    $('adminClose').addEventListener('click', function(){ hide($('adminMask')); });
+    $('adminMask').addEventListener('click', function(e){ if(e.target === $('adminMask')) hide($('adminMask')); });
+
+    // 管理员登录
+    $('adminLoginSubmit').addEventListener('click', function(){
+      $('adminLoginErr').textContent = '';
+      api('/login', {role:'admin', username:$('a_user').value.trim(), password:$('a_pwd').value})
+        .then(function(d){ if(d.ok){ location.reload(); } else { $('adminLoginErr').textContent = d.msg; } });
+    });
+    $('a_pwd').addEventListener('keydown', function(e){ if(e.key==='Enter') $('adminLoginSubmit').click(); });
+
+    // 管理员改密
+    $('adminChangeSubmit').addEventListener('click', function(){
+      var msg = $('adminChangeMsg'); msg.textContent = ''; msg.style.color = '#c0392b';
+      var t = $('t_user').value.trim(), p1 = $('t_pwd').value, p2 = $('t_pwd2').value;
+      if (!t) { msg.textContent = '请填写目标账号'; return; }
+      if (p1.length < 6) { msg.textContent = '新密码至少 6 位'; return; }
+      if (p1 !== p2) { msg.textContent = '两次输入的新密码不一致'; return; }
+      api('/admin/change_password', {target:t, new_password:p1})
+        .then(function(d){ if(d.ok){ msg.style.color='#1a7f37'; msg.textContent = d.msg + '（即将刷新）'; setTimeout(function(){ location.reload(); }, 900); }
+                         else { msg.textContent = d.msg; } });
+    });
+  })();
+</script>
 </body>
 </html>
