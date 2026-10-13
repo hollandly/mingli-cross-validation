@@ -28,12 +28,11 @@ TEMPLATE = r"""<!DOCTYPE html>
   body{margin:0;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
     color:var(--ink);background:linear-gradient(180deg,#f3ecdc,#efe6d2);line-height:1.65;}
   .wrap{max-width:1080px;margin:0 auto;padding:22px 18px 80px;}
-  header.top{text-align:center;padding:18px 0 6px;}
-  .brand{display:inline-flex;align-items:center;justify-content:center;gap:14px;}
-  .brand svg{width:54px;height:54px;flex:0 0 auto;filter:drop-shadow(0 3px 9px rgba(120,80,20,.35));}
-  .brand-txt{text-align:left;}
-  header.top h1{margin:0;font-size:25px;letter-spacing:3px;color:var(--gold);font-weight:700;}
-  header.top .sub{color:var(--muted);font-size:13px;margin-top:4px;letter-spacing:1px;}
+  header.top{text-align:center;padding:16px 0 6px;}
+  .brand{margin:0 auto 4px;}
+  .brand svg{display:block;width:84px;height:84px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(180,140,40,.45));}
+  header.top h1{margin:6px 0 0;font-size:28px;letter-spacing:8px;color:var(--gold);font-weight:800;text-shadow:0 2px 10px rgba(180,140,40,.35);}
+  header.top .sub{color:var(--muted);font-size:12.5px;margin-top:6px;letter-spacing:1px;}
   .disclaimer{background:#fbf3e0;border:1px solid #ecd9b0;color:#7a6a44;font-size:12px;
     padding:8px 14px;border-radius:8px;margin:12px auto;max-width:880px;text-align:center;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
@@ -122,7 +121,8 @@ TEMPLATE = r"""<!DOCTYPE html>
   .obs .chkrow label{display:flex;align-items:center;gap:4px;}
   @media(max-width:600px){
     .wrap{padding:14px 10px 60px;}
-    header.top h1{font-size:20px;letter-spacing:2px;}
+    .brand svg{width:64px;height:64px;}
+    header.top h1{font-size:21px;letter-spacing:5px;}
     .form-grid{grid-template-columns:1fr 1fr;}
     .field select,.field input{padding:10px;font-size:15px;}
     .btn{width:100%;padding:13px;font-size:16px;}
@@ -179,13 +179,9 @@ TEMPLATE = r"""<!DOCTYPE html>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">
-      __ICON__
-      <div class="brand-txt">
-        <h1>天命系统</h1>
-        <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
-      </div>
-    </div>
+    <div class="brand">__ICON__</div>
+    <h1>天命系统</h1>
+    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
   </header>
   <div class="disclaimer">
     本系统用于传统文化研究、自我认知与性格参考，<b>不构成任何医疗、投资、法律或人生的决策建议</b>。
