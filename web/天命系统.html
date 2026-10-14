@@ -252,7 +252,7 @@
   <circle cx="128" cy="128" r="46" fill="none" stroke="#0b0e16" stroke-opacity=".4" stroke-width="1.5"/>
 </svg></div>
     <h1>天命系统</h1>
-    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 ｜ 多维交叉验证（含面相 / 手相）</div>
+    <div class="sub">四柱八字 · 紫微斗数 · 周易梅花易数 · 铁板神数 · 西洋占星 · 生肖流年 ｜ 八维交叉验证（含面相 / 手相）</div>
   </header>
   <div class="disclaimer">
     本系统用于传统文化研究、自我认知与性格参考，<b>不构成任何医疗、投资、法律或人生的决策建议</b>。
@@ -9705,7 +9705,7 @@
   }
   // 大限：自命宫起，每运进一宫；顺逆依 dayun_forward（与八字大运同判：阳男阴女顺、阴男阳女逆）。
   // 大限四化：以运干起四化，飞星落宫（禄/权/科/忌各飞入何宫），此为紫微大限飞星之核心。
-  function _enrich_dayun(bazi, ziwei, tieban) {
+  function _enrich_dayun(bazi, ziwei, tieban, xiyao, shengxiao, solar) {
     var forward = !!bazi.dayun_forward;
     var palaces = ziwei.palaces;
     function palace_at(i) { var idx = forward ? (i % 12) : (((-i) % 12) + 12) % 12; return palaces[idx]; }
@@ -9719,19 +9719,189 @@
       });
       return hits;
     }
+    var xiji = _xi_ji_sets(bazi), xi = xiji[0], ji = xiji[1];
+    var de = bazi.day_element;
     var out = [];
     if (bazi.dayun.length && bazi.dayun[0].start_age > 0) {
       var mp = palace_at(0);
-      out.push({ gz: "命局", is_mingju: true, daxian: { palace: mp.palace, zhi: mp.zhi, stars: mp.stars, fu_stars: mp.fu_stars, sihua: sihua_hits({ gz: bazi.dayun[0].gz }) }, yj: null, tb: { number: tieban.base_number, theme: "命局未起运", text: "命局未起运，依本命局之势，不以大运铁板数论。" } });
+      out.push({ gz: "命局", is_mingju: true, daxian: { palace: mp.palace, zhi: mp.zhi, stars: mp.stars, fu_stars: mp.fu_stars, sihua: sihua_hits({ gz: bazi.dayun[0].gz }) }, yj: null, tb: { number: tieban.base_number, theme: "命局未起运", text: "命局未起运，依本命局之势，不以大运铁板数论。" }, astro: null, zodiac: null, cross: null });
     }
     bazi.dayun.forEach(function (d, i) {
       var pl = palace_at(i + 1);
       var sh = sihua_hits(d);
       var yj = _dayun_qigua(d);
       var tb = _tieban_dayun(bazi, tieban, d, i);
-      out.push({ gz: d.gz, is_mingju: false, daxian: { palace: pl.palace, zhi: pl.zhi, stars: pl.stars, fu_stars: pl.fu_stars, sihua: sh }, yj: yj, tb: tb });
+      var astro = (xiyao && solar) ? _xiyao_dayun(xiyao, solar, bazi, d, i) : null;
+      var zodiac = (shengxiao && solar) ? _shengxiao_dayun(shengxiao, solar, d) : null;
+      var cross = _dayun_cross(bazi, xi, ji, de, { daxian: { palace: pl.palace, stars: pl.stars, sihua: sh }, yj: yj, astro: astro, zodiac: zodiac }, d);
+      out.push({ gz: d.gz, is_mingju: false, daxian: { palace: pl.palace, zhi: pl.zhi, stars: pl.stars, fu_stars: pl.fu_stars, sihua: sh }, yj: yj, tb: tb, astro: astro, zodiac: zodiac, cross: cross });
     });
     return out;
+  }
+
+
+  // ============ 西洋占星 / 生肖流年（第七、八维）============
+  // 生肖常量（地支序：子丑寅卯辰巳午未申酉戌亥）
+  var ZODIAC_ANIMALS = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+  var ZODIAC_ELEM = ["水","土","木","木","土","火","火","土","金","金","土","水"];
+  var ZODIAC_NATURE = {"鼠":"机敏灵活、善应变","牛":"勤恳踏实、重信用","虎":"果敢有冲劲、敢闯","兔":"温和细腻、重情面","龙":"大气有抱负、善统领","蛇":"沉稳缜密、善谋划","马":"热情奔放、行动快","羊":"温和善良、重情义","猴":"机灵多才、善交际","鸡":"精明务实、重条理","狗":"忠诚守信、护家业","猪":"宽厚随和、重安稳"};
+  var SANHE = [["猴","鼠","龙"],["猪","兔","羊"],["虎","马","狗"],["蛇","鸡","牛"]];
+  var LIUHE = [["鼠","牛"],["虎","猪"],["兔","狗"],["龙","鸡"],["蛇","猴"],["马","羊"]];
+  var LIUCHONG = [["鼠","马"],["牛","羊"],["虎","猴"],["兔","鸡"],["龙","狗"],["蛇","猪"]];
+  var LIUHAI = [["鼠","羊"],["牛","马"],["虎","蛇"],["兔","龙"],["猴","猪"],["鸡","狗"]];
+  var LIUPO = [["鼠","鸡"],["虎","猪"],["兔","马"],["龙","牛"],["蛇","猴"],["羊","狗"]];
+  function _in_grp(grp,a,b){ return grp.some(function(g){ return g.indexOf(a)>=0 && g.indexOf(b)>=0; }); }
+  function _rel_zodiac(a,b){
+    if (a===b) return {type:"值太岁",lvl:"凶",t:"本命年，值太岁当头，宜守成低调、谨防变动"};
+    if (_in_grp(LIUCHONG,a,b)) return {type:"冲太岁",lvl:"凶",t:"六冲之年，动中藏险，远行/搬迁/重大决策宜缓"};
+    var sanxing=[["寅","巳","申"],["丑","戌","未"],["子","卯"]];
+    if (a!==b && sanxing.some(function(g){ return g.indexOf(a)>=0 && g.indexOf(b)>=0; })) return {type:"刑太岁",lvl:"凶",t:"三刑之年，易生口舌是非与人际纠缠，宜忍让"};
+    if (_in_grp(LIUHAI,a,b)) return {type:"害太岁",lvl:"凶",t:"六害之年，防小人暗算与暗中损耗"};
+    if (_in_grp(LIUPO,a,b)) return {type:"破太岁",lvl:"中",t:"六破之年，琐事耗散，防小破财与计划被打乱"};
+    if (_in_grp(SANHE,a,b)) return {type:"三合",lvl:"吉",t:"三合之年，贵人助力、协作顺遂，宜进取合伙"};
+    if (_in_grp(LIUHE,a,b)) return {type:"六合",lvl:"吉",t:"六合之年，人缘和合、机遇暗藏，宜结善缘"};
+    return {type:"平",lvl:"平",t:"平运之年，顺势而为即可"};
+  }
+  // 西洋占星数学（自包含近似星历，整宫制；用于本命盘与行运推运）
+  var WEST_SIGNS = ["白羊","金牛","双子","巨蟹","狮子","处女","天秤","天蝎","射手","摩羯","水瓶","双鱼"];
+  var WEST_ELEM = ["火","土","风","水","火","土","风","水","火","土","风","水"];
+  function _west_elem_of_sign(i){ return {"火":"火","土":"土","风":"木","水":"水"}[WEST_ELEM[i]]; }
+  var CITY_LATITUDE = {"北京":39.90,"上海":31.23,"广州":23.13,"深圳":22.54,"杭州":30.27,"南京":32.06,"成都":30.66,"武汉":30.59,"西安":34.34,"重庆":29.56,"天津":39.13,"苏州":31.30,"郑州":34.75,"长沙":28.23,"沈阳":41.80,"大连":38.91,"青岛":36.07,"厦门":24.48,"福州":26.07,"昆明":25.04,"哈尔滨":45.80,"长春":43.82,"石家庄":38.04,"太原":37.87,"济南":36.65,"合肥":31.82,"南昌":28.68,"南宁":22.82,"贵阳":26.65,"兰州":36.06,"海口":20.04,"三亚":18.25,"拉萨":29.66,"乌鲁木齐":43.83,"呼和浩特":40.84,"银川":38.49,"西宁":36.62,"香港":22.32,"澳门":22.20,"台北":25.03,"东莞":23.02,"佛山":23.02,"无锡":31.49,"宁波":29.87,"温州":28.00};
+  function _city_lat(city){ return CITY_LATITUDE[city] != null ? CITY_LATITUDE[city] : 30.0; }
+  function _jd(y,m,d,hh){ if (m<=2){ y-=1; m+=12; } var A=Math.floor(y/100), B=2-A+Math.floor(A/4); if (y<1582) B=0; return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5+hh/24; }
+  function _sun_lon(jd){ var n=jd-2451545.0; var L=280.460+0.9856474*n; var g=357.528+0.9856003*n; var gl=g*Math.PI/180; var lam=L+1.915*Math.sin(gl)+0.020*Math.sin(2*gl); return ((lam%360)+360)%360; }
+  function _moon_lon(jd){ var n=jd-2451545.0; var Lm=218.316+13.176396*n; var Mm=134.963+13.064993*n; var Fm=93.272+13.229350*n; var lam=Lm+6.289*Math.sin(Mm*Math.PI/180)+0.214*Math.sin(2*Fm*Math.PI/180); return ((lam%360)+360)%360; }
+  var PLANET_REF = [["水",252.250,4.092617],["金",181.979,1.602136],["火",355.433,0.524021],["木",34.396,0.083085],["土",49.954,0.033431],["天",313.238,0.011620],["海",304.880,0.005989],["冥",238.929,0.003976]];
+  function _planet_lon(jd,name){ for (var i=0;i<PLANET_REF.length;i++){ if (PLANET_REF[i][0]===name){ var n=jd-2451545.0; return ((PLANET_REF[i][1]+PLANET_REF[i][2]*n)%360+360)%360; } } return 0; }
+  function _lst_deg(jd,lon){ var gmst=280.46061837+360.98564736629*(jd-2451545.0); return ((gmst+lon)%360+360)%360; }
+  function _obliq(jd){ var T=(jd-2451545.0)/36525; return 23.4392911-0.0130042*T; }
+  function _asc_mc(jd,lon,lat){
+    var eps=_obliq(jd)*Math.PI/180; var lst=_lst_deg(jd,lon)*Math.PI/180;
+    var mc=Math.atan2(Math.sin(lst),Math.cos(lst)*Math.cos(eps))*180/Math.PI; mc=((mc%360)+360)%360;
+    var num=Math.cos(lst), den=-(Math.sin(lst)*Math.cos(eps)+Math.tan(lat*Math.PI/180)*Math.sin(eps));
+    var asc=Math.atan2(num,den)*180/Math.PI; asc=((asc%360)+360)%360;
+    return {asc:asc, mc:mc};
+  }
+  function _sign_of(lon){ return Math.floor((((lon%360)+360)%360)/30); }
+  function _aspect(a,b){
+    var d=Math.abs(((a-b)%360+540)%360-180);
+    var orbs=[[0,"合",8],[60,"六合(西)",4],[90,"刑(西)",6],[120,"三合(西)",6],[180,"冲(西)",8]];
+    var out=[]; orbs.forEach(function(o){ if (Math.abs(d-o[0])<=o[2]) out.push(o[1]); }); return out;
+  }
+  function compute_xiyao(solar, birthplace){
+    var lon = CITY_LONGITUDE[birthplace] != null ? CITY_LONGITUDE[birthplace] : 120.0;
+    var lat = _city_lat(birthplace);
+    var y=solar.getFullYear(), mo=solar.getMonth()+1, d=solar.getDate(), hh=solar.getHours()+solar.getMinutes()/60;
+    var jd=_jd(y,mo,d,hh);
+    var am=_asc_mc(jd,lon,lat);
+    var sun=_sun_lon(jd), moon=_moon_lon(jd);
+    var pl={ "水":_planet_lon(jd,"水"),"金":_planet_lon(jd,"金"),"火":_planet_lon(jd,"火"),"木":_planet_lon(jd,"木"),"土":_planet_lon(jd,"土"),"天":_planet_lon(jd,"天"),"海":_planet_lon(jd,"海"),"冥":_planet_lon(jd,"冥") };
+    function hs(lon2){ var s=_sign_of(lon2); var h=((s-_sign_of(am.asc))%12+12)%12+1; return {sign:s, h:h}; }
+    var natal={
+      sun_sign:_sign_of(sun), moon_sign:_sign_of(moon), asc_sign:_sign_of(am.asc), mc_sign:_sign_of(am.mc),
+      asc_deg:Math.round(am.asc*10)/10, mc_deg:Math.round(am.mc*10)/10,
+      houses:{ "1":_sign_of(am.asc), "10":_sign_of(am.mc), "7":((_sign_of(am.asc)+6)%12), "4":((_sign_of(am.asc)+9)%12) },
+      planets:{ "日":hs(sun), "月":hs(moon), "水":hs(pl["水"]), "金":hs(pl["金"]), "火":hs(pl["火"]), "木":hs(pl["木"]), "土":hs(pl["土"]), "天":hs(pl["天"]), "海":hs(pl["海"]), "冥":hs(pl["冥"]) },
+      sun_lon:sun, moon_lon:moon, asc:am.asc, mc:am.mc
+    };
+    var pts=[["日",sun],["月",moon],["上升",am.asc]];
+    var asp=[], outer=[["木",pl["木"]],["土",pl["土"]],["天",pl["天"]],["海",pl["海"]],["冥",pl["冥"]]];
+    pts.forEach(function(p1){ outer.forEach(function(p2){ var a=_aspect(p1[1],p2[1]); if (a.length) asp.push(p1[0]+a[0]+p2[0]); }); });
+    natal.aspects=asp.slice(0,6);
+    return natal;
+  }
+  function compute_shengxiao(bazi){
+    var yz=bazi.four_pillars.year.gz[1];
+    var idx=ZHI_INDEX[yz];
+    return { birth_animal:ZODIAC_ANIMALS[idx], birth_elem:ZODIAC_ELEM[idx], birth_zhi:yz };
+  }
+  function xiyao_signals(natal, bazi){
+    var de=bazi.day_element;
+    function lvlOf(elem){ if (!elem) return 3; if (SHENG[elem]===de||elem===de) return 4; if (KE[elem]===de) return 2; return 3; }
+    function hs(h){ var s=natal.houses[h]; return s!=null?WEST_SIGNS[s]:"—"; }
+    function hsElem(h){ var s=natal.houses[h]; return s!=null?_west_elem_of_sign(s):null; }
+    var res={};
+    res["性格"]=["西洋：太阳"+WEST_SIGNS[natal.sun_sign]+"座（自我）、上升"+WEST_SIGNS[natal.asc_sign]+"座（外在）、月亮"+WEST_SIGNS[natal.moon_sign]+"座（内在情绪），西式气质与八字日主互参", lvlOf(_west_elem_of_sign(natal.sun_sign))];
+    res["事业"]=["西洋：第10宫（MC）落"+hs(10)+"座，主事业成就与社会角色；土星相位影响长期建树", lvlOf(hsElem(10))];
+    res["财运"]=["西洋：第2宫落"+hs(2)+"座，主财富观与资源获取；木星所临利进财", lvlOf(hsElem(2))];
+    res["婚姻"]=["西洋：第7宫（下落）落"+hs(7)+"座，主伴侣与合作关系", lvlOf(hsElem(7))];
+    res["家庭(六亲)"]=["西洋：第4宫（IC）落"+hs(4)+"座，主家宅与根基亲缘", lvlOf(hsElem(4))];
+    res["健康"]=["西洋：第1宫（上升）落"+hs(1)+"座，主体质与自我养护", lvlOf(hsElem(1))];
+    res["时机运势"]=["西洋：本命木星落"+WEST_SIGNS[natal.planets["木"].sign]+"座、土星落"+WEST_SIGNS[natal.planets["土"].sign]+"座，木星主机遇窗口、土星主考验周期"+(natal.aspects.length?("；重点相位："+natal.aspects.join("、")):""), lvlOf(_west_elem_of_sign(natal.planets["木"].sign))];
+    return res;
+  }
+  function shengxiao_signals(sx, bazi){
+    var res={};
+    res["性格"]=["生肖「"+sx.birth_animal+"」："+ZODIAC_NATURE[sx.birth_animal]+"（生肖主先天禀赋与气质底色）",3];
+    res["事业"]=["生肖流年：三合/六合之年利协作合伙、借贵气成事",3];
+    res["财运"]=["生肖流年：三合局利财库聚合与偏财机遇，破太岁之年防破财",3];
+    res["婚姻"]=["生肖：六合/桃花之年人缘和合，利婚恋结缘",3];
+    res["家庭(六亲)"]=["生肖：六合/三合之年亲缘融洽、得长辈同辈助",3];
+    res["健康"]=["生肖：本命/犯太岁之年宜低调养身、防小耗，定期体检",3];
+    res["时机运势"]=["生肖流年：逢本命、冲、刑、害、破太岁之年宜守成避险；逢三合、六合之年宜进取——以「太岁」为年度枢机",3];
+    return res;
+  }
+  function _xiyao_dayun(natal, solar, bazi, d) {
+    var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+    var mid_age = Math.round((a0 + a1) / 2);
+    var natal_jd = _jd(solar.getFullYear(), solar.getMonth()+1, solar.getDate(), solar.getHours()+solar.getMinutes()/60);
+    var prog_jd = natal_jd + mid_age;             // 次限推运：一日＝一年
+    var transit_jd = natal_jd + mid_age * 365.25; // 流年过运：真实年月
+    var prog_sun = _sun_lon(prog_jd);
+    var psign = _sign_of(prog_sun);
+    var phouse = ((psign - _sign_of(natal.asc)) % 12 + 12) % 12 + 1;
+    var jup = _planet_lon(transit_jd, "木"), sat = _planet_lon(transit_jd, "土");
+    var asp = [];
+    [["本命日", natal.sun_lon], ["本命月", natal.moon_lon], ["本命上升", natal.asc], ["本命中天", natal.mc]].forEach(function (p) { var a = _aspect(prog_sun, p[1]); if (a.length) asp.push("行运太阳" + a[0] + p[0]); });
+    return {
+      prog_sun_sign: psign, prog_sun_house: phouse, prog_sun_elem: _west_elem_of_sign(psign),
+      jup_sign: _sign_of(jup), sat_sign: _sign_of(sat),
+      jup_elem: _west_elem_of_sign(_sign_of(jup)), sat_elem: _west_elem_of_sign(_sign_of(sat)),
+      aspects: asp.slice(0, 3)
+    };
+  }
+  function _shengxiao_dayun(sx, solar, d){
+    var a0=Math.round(d.start_age), a1=Math.round(d.end_age-1);
+    var by=solar.getFullYear();
+    var fav=0, unfav=0, fav_years=[], unfav_years=[];
+    for (var age=a0; age<=a1; age++){
+      var yr=by+age-1;
+      var yz=GZ60[(yr-4)%60][1];
+      var animal=ZODIAC_ANIMALS[ZHI_INDEX[yz]];
+      var rel=_rel_zodiac(sx.birth_animal, animal);
+      if (rel.lvl==="吉"){ fav++; if (fav_years.length<4) fav_years.push(yr+"("+animal+")"); }
+      else if (rel.lvl==="凶"){ unfav++; if (unfav_years.length<4) unfav_years.push(yr+"("+animal+"·"+rel.type+")"); }
+    }
+    return { fav:fav, unfav:unfav, fav_years:fav_years, unfav_years:unfav_years };
+  }
+  function _dayun_cross(bazi, xi, ji, de, en, d){
+    var score=0, lines=[];
+    var fav=_dayun_fav(bazi, d, xi, ji);
+    if (fav>0.5){ score+=1.2; lines.push("八字喜运+"); } else if (fav<-0.5){ score-=1.2; lines.push("八字忌运-"); } else lines.push("八字平");
+    var dx=en.daxian;
+    if (dx.stars){
+      if (dx.stars.some(function(s){ return JI_STARS[s]; })){ score+=0.6; lines.push("紫微吉星+"); }
+      if (dx.stars.some(function(s){ return ["七杀","破军","廉贞","贪狼","巨门"].indexOf(s)>=0; })){ score-=0.6; lines.push("紫微煞星-"); }
+    }
+    if (dx.sihua){ if (dx.sihua["禄"]||dx.sihua["权"]||dx.sihua["科"]) score+=0.3; if (dx.sihua["忌"]) score-=0.6; }
+    if (en.yj && en.yj.gua_elem){
+      if (SHENG[en.yj.gua_elem]===de || en.yj.gua_elem===de){ score+=0.6; lines.push("本运卦生扶+"); }
+      else if (KE[en.yj.gua_elem]===de){ score-=0.6; lines.push("本运卦克泄-"); }
+    }
+    if (en.astro){
+      var ae=en.astro.prog_sun_elem;
+      if (ae && (SHENG[ae]===de||ae===de)){ score+=0.7; lines.push("西洋行运太阳生扶+"); }
+      else if (ae && KE[ae]===de){ score-=0.7; lines.push("西洋行运太阳克泄-"); }
+      if (en.astro.jup_elem && (SHENG[en.astro.jup_elem]===de||en.astro.jup_elem===de)) score+=0.4;
+      if (en.astro.sat_elem && KE[en.astro.sat_elem]===de) score-=0.4;
+    }
+    if (en.zodiac){
+      var z=en.zodiac;
+      if (z.fav>z.unfav){ score+=0.5*Math.min(2,z.fav-z.unfav); lines.push("生肖多吉年+"); }
+      else if (z.unfav>z.fav){ score-=0.5*Math.min(2,z.unfav-z.fav); lines.push("生肖多犯太岁-"); }
+    }
+    var verdict = score>1.0 ? "吉" : (score<-1.0 ? "凶" : "平");
+    return { score:Math.round(score*10)/10, verdict:verdict, lines:lines };
   }
 
   // ============ 交叉验证 ============
@@ -10224,11 +10394,13 @@
     };
   }
 
-  function cross_validate(bazi, ziwei, yijing, tieban, face, palm) {
+  function cross_validate(bazi, ziwei, yijing, tieban, face, palm, xiyao, shengxiao, solar) {
     var bs = bazi_signals(bazi), zs = ziwei_signals(ziwei), ys = yijing_signals(yijing, bazi), ts_v = tieban_signals(tieban);
     var ts = ts_v[0], tieban_votes = ts_v[1];
-    var dayun_enrich = _enrich_dayun(bazi, ziwei, tieban);
+    var dayun_enrich = _enrich_dayun(bazi, ziwei, tieban, xiyao, shengxiao, solar);
     var systems = [["四柱八字", bs], ["紫微斗数", zs], ["周易卦象", ys], ["铁板神数", ts]];
+    if (xiyao) systems.push(["西洋占星", xiyao_signals(xiyao, bazi)]);
+    if (shengxiao) systems.push(["生肖流年", shengxiao_signals(shengxiao, bazi)]);
     if (face) systems.push(["面相", face]);
     if (palm) systems.push(["手相", palm]);
     var nSys = systems.length;
@@ -10248,6 +10420,8 @@
     var bi_jie = bazi.ten_gods.filter(function (g) { return g === "比肩" || g === "劫财"; }).length;
     if (bi_jie >= 2 && tieban_votes["兄弟"]) review_flags.push("八字比劫偏旺而铁板兄弟数偏少，时辰或存疑，建议考时复核。");
     if (face || palm) review_flags.push("相学（面相/手相）为辅助维度：由照片像素气色自动判定 + 您观察勾选的特征共同得出，结论须与命理" + (nSys - (face ? 1 : 0) - (palm ? 1 : 0)) + "体系互参，不单独作断。");
+    if (xiyao) review_flags.push("西洋占星为辅助维度：本命盘与行运推运依出生地经纬度推算（近似星历、整宫制），结论须与东方命理互参。");
+    if (shengxiao) review_flags.push("生肖流年以出生时年柱地支定生肖、逐年与流年地支论三合/六冲/犯太岁，为民俗运势框架，须与其余体系互参。");
     var conflicts = matrix.filter(function (m) { return m.consistency === "分歧"; }).map(function (m) { return m.dimension; });
     if (conflicts.length) review_flags.push("维度「" + conflicts.join("、") + "」" + nSys + "体系结论分歧较大，建议复核。");
     var cons_counts = { "高一致": 0, "中一致": 0, "分歧": 0 };
@@ -10407,7 +10581,10 @@
       var th = theme(god) + (fav ? "（喜运）" : bad ? "（忌运）" : "");
       if (en && en.daxian) th += "｜紫微大限：" + en.daxian.palace + "宫";
       if (en && en.yj) th += "｜本运卦：" + en.yj.ben_gua;
-      out.push({ range: a0 + "–" + a1 + "岁", gz: d.gz, theme: th, turning: turning.length ? turning.slice(0, 2).join("；") : "无明显大变动年", tip: tip });
+      if (en && en.astro) th += "｜西洋：行运太阳" + WEST_SIGNS[en.astro.prog_sun_sign] + "座";
+      if (en && en.zodiac && en.zodiac.fav > 0) th += "｜生肖吉年" + en.zodiac.fav_years.length + "个";
+      if (en && en.cross) th += "｜八维交叉：" + en.cross.verdict;
+      out.push({ range: a0 + "–" + a1 + "岁", gz: d.gz, theme: th, turning: turning.length ? turning.slice(0, 2).join("；") : "无明显大变动年", tip: tip, cross: en && en.cross ? en.cross.verdict : null });
     });
     return out;
   }
@@ -10523,6 +10700,14 @@
     }
     if (en && en.tb && en.tb.theme) extra += " 铁板数" + en.tb.number + "主「" + en.tb.theme + "」。";
     if (en && en.yj) extra += " 本运卦「" + en.yj.ben_gua + "」(" + en.yj.gua_nature + ")：" + (en.yj.meaning || "").slice(0, 22) + "。";
+    if (en && en.astro) {
+      extra += " 西洋：行运太阳入" + WEST_SIGNS[en.astro.prog_sun_sign] + "座（第" + en.astro.prog_sun_house + "宫），十年重心转向该宫领域";
+      if (en.astro.aspects.length) extra += "，行运太阳" + en.astro.aspects.join("、");
+      extra += "；木在" + WEST_SIGNS[en.astro.jup_sign] + "、土在" + WEST_SIGNS[en.astro.sat_sign] + "。";
+    }
+    if (en && en.zodiac) {
+      extra += " 生肖：本运十年" + (en.zodiac.fav > 0 ? ("三合/六合吉年 " + en.zodiac.fav_years.join("、") + "（宜进取）") : "无明显三合吉年") + (en.zodiac.unfav > 0 ? ("；犯太岁年 " + en.zodiac.unfav_years.join("、") + "（宜守）") : "") + "。";
+    }
     var t;
     if (fav) {
       if (strong === "身弱") t = "此运（" + gz + "）干支引动「" + yong + "」生扶日主，身弱得助——宜走「" + act + "」之路：借平台、靠团队、把师长/家庭资源用足；不宜单兵冒进或大额加杠杆。";
@@ -10531,6 +10716,7 @@
       if (strong === "身弱") t = "此运（" + gz + "）干支加重克泄耗，身弱更吃力——「" + act + "」相关动作宜收着：先稳住主业与现金流，重大决策三思、不替人担保、不盲目加杠杆；以学习与人脉托底，等下一转运旺。";
       else t = "此运（" + gz + "）干支为「" + god + "」忌神逢生——「" + act + "」易过亢失控：把精力转成纪律、运动、制度建设，防固执冒进；财务控杠杆、合作分账白纸黑字。";
     } else t = "此运（" + gz + "）干支与日主中和，动能平——「" + act + "」可小步推进但不主动制造大变动；把现有摊子做厚，等下一个发力窗口。";
+    if (en && en.cross) t += "【八维交叉：" + en.cross.verdict + "（" + en.cross.lines.join("") + "）】";
     return t + extra;
   }
 
@@ -10538,6 +10724,7 @@
   function _detail_tip(bazi, d, god, score, en, yijing) {
     var day_zhi = bazi.four_pillars.day.gz[1];
     var gz = d.gz, ny = d.nayin, ny_elem = nayin(gz);
+    var de = bazi.day_element;
     var fav = score > 0.5, bad = score < -0.5;
     var parts = [];
     parts.push("运干「" + gz[0] + "」为" + god + "、纳音" + ny + "（" + ny_elem + "），整体" + (fav ? "助你用神、十年气场偏顺" : bad ? "加重忌神、十年气场偏收" : "与日主中和、气场平稳") + "。");
@@ -10552,8 +10739,15 @@
       parts.push("紫微大限行「" + dx.palace + "宫」（主星" + star_txt + (sih.length ? "；大限四化" + sih.join("、") : "") + "），十年重心在" + dx.palace + "相关人事。");
     }
     if (en && en.tb) parts.push("铁板数" + en.tb.number + "：" + en.tb.text.replace(/^大运「[^」]+」/, ""));
+    if (en && en.astro) {
+      parts.push("西洋占星：行运太阳推进至" + WEST_SIGNS[en.astro.prog_sun_sign] + "座（第" + en.astro.prog_sun_house + "宫），十年主题转向该宫领域；流年木星在" + WEST_SIGNS[en.astro.jup_sign] + "座（" + (SHENG[en.astro.jup_elem] === de || en.astro.jup_elem === de ? "木星空环生扶日主，利机遇扩展" : "木星平和") + "）、土星在" + WEST_SIGNS[en.astro.sat_sign] + "座（" + (KE[en.astro.sat_elem] === de ? "土星克泄，宜稳守" : "土星平") + "）" + (en.astro.aspects.length ? ("；行运太阳" + en.astro.aspects.join("、")) : "") + "。");
+    }
+    if (en && en.zodiac) {
+      parts.push("生肖流年：本运十年中" + (en.zodiac.fav ? ("三合/六合之年（" + en.zodiac.fav_years.join("、") + "）利进取合伙、借太岁三合贵气") : "无明显三合吉年") + (en.zodiac.unfav ? ("；而" + en.zodiac.unfav_years.join("、") + "为犯太岁之年，宜守成、防变动与小人") : "") + "。");
+    }
     var yj = (en && en.yj) ? en.yj : yijing;
     if (yj && yj.ben_gua) parts.push((en && en.yj ? "本运卦" : "本命卦") + "「" + yj.ben_gua + "」(" + yj.gua_nature + ")与此运互参：宜" + (fav ? "借卦象之势主动作为" : bad ? "以卦之守静涵养待时" : "动静得宜") + "。");
+    if (en && en.cross) parts.push("【八维交叉结论：" + en.cross.verdict + "】各体系对这步大运的综合取向——" + en.cross.lines.join("、") + "。");
     return parts.join("");
   }
 
@@ -10577,6 +10771,7 @@
     span_back = span_back || 2; span_fwd = span_fwd || 8;
     var day_gan = bazi.day_master, xi_ji = _xi_ji_sets(bazi), xi_set = xi_ji[0], ji_set = xi_ji[1];
     var now_year = new Date().getFullYear(), birth_year = birth.getFullYear();
+    var yz0 = bazi.four_pillars.year.gz[1]; var animal0 = ZODIAC_ANIMALS[ZHI_INDEX[yz0]];
     var palaces = ziwei.palaces, zhi_palace_idx = {};
     palaces.forEach(function (p, i) { zhi_palace_idx[p.zhi] = i; });
     var rows = [];
@@ -10621,11 +10816,13 @@
       if (sihua_hit.length) parts.push("流年四化" + sihua_hit.join("、") + "落本宫");
       var summary = parts.join("；") + "。" + gr[2] + "。";
       var sihua_out = {}; for (var t3 in sihua) if (sihua[t3]) sihua_out[t3] = sihua[t3];
+      var _zx_rel = _rel_zodiac(animal0, ZODIAC_ANIMALS[ZHI_INDEX[y_zhi]]);
+      var _zx = { animal: ZODIAC_ANIMALS[ZHI_INDEX[y_zhi]], rel_type: _zx_rel.type, rel_lvl: _zx_rel.lvl, rel_text: _zx_rel.t, elem: ZODIAC_ELEM[ZHI_INDEX[y_zhi]] };
       rows.push({
         year: y, gz: gz, nayin: nayin, age: age, shi_shen: shi_shen, dayun_gz: dy_gz || "—", dayun_step: dy_step,
         dayun_shishen: dy_shishen, flow_palace: fp_name, flow_palace_zhi: y_zhi,
         flow_stars: fp_stars, flow_fu_stars: fp_fu, sihua: sihua_out, sihua_hit: sihua_hit,
-        score: Math.round(score * 100) / 100, grade: gr[0], cls: gr[1], advice: gr[2], advice_long: advice_long, advice_cat: cat, summary: summary, mechanism: mech, key_months: km, is_current: y === now_year
+        score: Math.round(score * 100) / 100, grade: gr[0], cls: gr[1], advice: gr[2], advice_long: advice_long, advice_cat: cat, summary: summary, mechanism: mech, key_months: km,         is_current: y === now_year, zodiac: _zx
       });
     }
     return { rows: rows, trend: rows.filter(function (r) { return r.is_current; })[0].summary, now_year: now_year };
@@ -10760,7 +10957,9 @@
     var tb = compute_tieban(b, z);
     var faceSig = (meta && meta.faceObs) ? face_signals(meta.faceObs, meta.facePx) : null;
     var palmSig = (meta && meta.palmObs) ? palm_signals(meta.palmObs, meta.palmPx) : null;
-    var cv = cross_validate(b, z, yj, tb, faceSig, palmSig);
+    var xiyao = compute_xiyao(solar, birthplace);
+    var sx = compute_shengxiao(b);
+    var cv = cross_validate(b, z, yj, tb, faceSig, palmSig, xiyao, sx, solar);
     var liu = compute_liunian(b, z, solar);
     var mingge = _mingge_zonglun(b, yj, cv);
     var yongshen = _yongshen_map(b, mingge);
@@ -10784,7 +10983,7 @@
           }
         : { calendar: "阳历", year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace },
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
-      liunian: liu, ziwei_svg: ziwei_svg, fortune_svg: fortune_svg, radar_wuxing: radar_wuxing,
+      liunian: liu, xiyao: xiyao, shengxiao: sx, ziwei_svg: ziwei_svg, radar_wuxing: radar_wuxing,
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, elem_data: elem_data,
       mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail, action_playbook: action_playbook,
       face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
@@ -10793,7 +10992,7 @@
   }
 
   return {
-    C: { GAN: GAN, ZHI: ZHI, GZ60: GZ60, ELEMENTS: ELEMENTS, ELEMENT_COLOR: ELEMENT_COLOR, CITY_LONGITUDE: CITY_LONGITUDE, SIHUA: SIHUA, TEN_GOD: TEN_GOD, ZIWEI_PALACES: ZIWEI_PALACES },
+    C: { GAN: GAN, ZHI: ZHI, GZ60: GZ60, ELEMENTS: ELEMENTS, ELEMENT_COLOR: ELEMENT_COLOR, CITY_LONGITUDE: CITY_LONGITUDE, SIHUA: SIHUA, TEN_GOD: TEN_GOD, ZIWEI_PALACES: ZIWEI_PALACES, WEST_SIGNS: WEST_SIGNS },
     analyze: analyze, compute_bazi: compute_bazi, compute_ziwei: compute_ziwei, meihua_qigua: meihua_qigua,
     compute_tieban: compute_tieban, cross_validate: cross_validate, compute_liunian: compute_liunian, action_playbook: _action_playbook,
     face_signals: face_signals, palm_signals: palm_signals,
@@ -10974,7 +11173,7 @@
   // ---- 渲染 ----
   function render(ctx){
     var b=ctx.bazi, z=ctx.ziwei, yj=ctx.yijing, tb=ctx.tieban, cv=ctx.cv, liu=ctx.liunian, geo=ctx.geo, ap=ctx.action_playbook;
-    var H=[];
+    var H=[]; var WEST_SIGNS = ML.C.WEST_SIGNS;
     H.push('<div class="card"><h2>一、基本信息与真太阳时校正</h2>');
     H.push('<div class="kv">');
     var bi=ctx.birth_input;
@@ -11079,6 +11278,40 @@
       H.push('</div>');
     }
 
+    // 西洋占星（本命盘 + 行运推运）· 第七维
+    if(ctx.xiyao){
+      var xa = ctx.xiyao;
+      H.push('<div class="card"><h2>西洋占星 · 本命盘与行运推运（第七维）</h2>');
+      H.push('<div class="note">西洋占星为辅助维度：依出生地经纬度（自包含近似星历、整宫制）推算本命盘，并以「次限推运（一日＝一年）＋流年过运（真实年月）」推演各大运阶段的行运太阳、木/土落座与重点相位；须与东方命理互参，非定数。</div>');
+      H.push('<div class="kv">');
+      H.push('<span class="k">太阳星座：</span><span class="v">'+esc(WEST_SIGNS[xa.sun_sign])+'</span>');
+      H.push('<span class="k">月亮星座：</span><span class="v">'+esc(WEST_SIGNS[xa.moon_sign])+'</span>');
+      H.push('<span class="k">上升星座：</span><span class="v">'+esc(WEST_SIGNS[xa.asc_sign])+'（'+xa.asc_deg+'°）</span>');
+      H.push('<span class="k">中天(MC)：</span><span class="v">'+esc(WEST_SIGNS[xa.mc_sign])+'（'+xa.mc_deg+'°）</span>');
+      H.push('</div>');
+      H.push('<h3>十大星体落宫</h3><table><tr><th>星体</th><th>星座</th><th>宫位</th></tr>');
+      [["日","太阳"],["月","月亮"],["水","水星"],["金","金星"],["火","火星"],["木","木星"],["土","土星"],["天","天王星"],["海","海王星"],["冥","冥王星"]].forEach(function(p){
+        var pl = xa.planets[p[0]];
+        H.push('<tr><td><b>'+p[1]+'</b></td><td>'+esc(WEST_SIGNS[pl.sign])+'</td><td>第'+pl.h+'宫</td></tr>');
+      });
+      H.push('</table>');
+      H.push('<h3>重点相位</h3><div class="kv"><span class="v">'+(xa.aspects.length?xa.aspects.join('、'):'无明显主相位')+'</span></div>');
+      H.push('<div class="note">本命盘提供「西式气质（太阳/月亮/上升）＋事业（第10宫）＋财富（第2宫）＋关系（第7宫）＋家宅（第4宫）＋体质（第1宫）」视角，与八字日主、紫微十二宫、易卦互为映照；本命太阳/月亮/上升已并入下方「多维交叉验证」的性格维度。</div>');
+      H.push('</div>');
+    }
+
+    // 生肖流年（太岁枢机）· 第八维
+    if(ctx.shengxiao){
+      var sx = ctx.shengxiao;
+      H.push('<div class="card"><h2>生肖流年 · 太岁枢机（第八维）</h2>');
+      H.push('<div class="kv">');
+      H.push('<span class="k">出生生肖：</span><span class="v">'+esc(sx.birth_animal)+'</span>');
+      H.push('<span class="k">生肖五行：</span><span class="v">'+esc(sx.birth_elem)+'</span>');
+      H.push('<span class="k">年柱地支：</span><span class="v">'+esc(sx.birth_zhi)+'</span></div>');
+      H.push('<div class="note">生肖流年以出生时年柱地支定生肖，逐年与流年地支论三合（申子辰/亥卯未/寅午戌/巳酉丑）、六合、六冲、六害、六破与值/刑太岁。三合/六合之年宜进取合伙、借贵气成事；值/冲/刑/害/破太岁之年宜守成避险、防变动小人。其为民俗运势框架，须与其余体系互参；逐年生肖/太岁亦列于上方「流年详批」表中。</div>');
+      H.push('</div>');
+    }
+
     // 命格综合论断（各体系归一）· 用神指引
     H.push('<div class="card"><h2>命格综合论断 · 用神指引（各体系归一）</h2>');
     var mg = ctx.mingge;
@@ -11102,6 +11335,8 @@
     H.push('<div><b>周易：</b>本卦 ' + esc(yj.ben_gua) + ' · 变卦 ' + esc(yj.bian_gua) + ' · 动爻第' + yj.dong_yao + '爻</div>');
     H.push('<div><b>铁板考时数：</b>' + tb.tiaowen.map(function (t) { return t.dimension + t.number; }).join('、') + '</div>');
     H.push('<div><b>交叉验证：</b>高一致 ' + cv.cons_counts["高一致"] + ' · 中一致 ' + cv.cons_counts["中一致"] + ' · 分歧 ' + cv.cons_counts["分歧"] + '</div>');
+    H.push('<div><b>西洋占星：</b>' + (ctx.xiyao ? ('太阳' + esc(WEST_SIGNS[ctx.xiyao.sun_sign]) + ' · 月亮' + esc(WEST_SIGNS[ctx.xiyao.moon_sign]) + ' · 上升' + esc(WEST_SIGNS[ctx.xiyao.asc_sign]) + ' · 中天' + esc(WEST_SIGNS[ctx.xiyao.mc_sign])) : '—') + '</div>');
+    H.push('<div><b>生肖流年：</b>' + (ctx.shengxiao ? (esc(ctx.shengxiao.birth_animal) + '（' + esc(ctx.shengxiao.birth_elem) + '）· 年柱地支 ' + esc(ctx.shengxiao.birth_zhi)) : '—') + '</div>');
     H.push('</div></details>');
     H.push('<div class="note">命格论断由命理各体系（含相学若开启）原始信号归纳而成，供自我认知与研究参考，非宿命判定。</div>');
     H.push('</div>');
@@ -11110,10 +11345,10 @@
     H.push('<div class="card"><h2>六、流年详批（'+liu.rows[0].year+'–'+liu.rows[liu.rows.length-1].year+'）</h2>');
     H.push('<div class="svgbox">'+ctx.liunian_sihua+'<div class="note">流年命宫四化盘（禄/权/科/忌 落宫）</div></div>');
     H.push('<div class="svgbox">'+ctx.fortune_svg+'<div class="note">运势评分折线（当前年居中）</div></div>');
-    H.push('<table><tr><th>年份</th><th>岁</th><th>流年</th><th>纳音</th><th>十神</th><th>大运</th><th>流年命宫</th><th>四化</th><th>评分</th><th>等级</th><th>建议</th></tr>');
+    H.push('<table><tr><th>年份</th><th>岁</th><th>流年</th><th>纳音</th><th>十神</th><th>大运</th><th>流年命宫</th><th>四化</th><th>生肖太岁</th><th>评分</th><th>等级</th><th>建议</th></tr>');
     liu.rows.forEach(function(r){
       var sihuaTxt=Object.keys(r.sihua).map(function(k){return k+r.sihua[k];}).join(" ");
-      H.push('<tr'+(r.is_current?' style="background:#fff7e0"':'')+'><td>'+(r.is_current?'<b>'+r.year+'★</b>':r.year)+'</td><td>'+r.age+'</td><td class="pillar" style="font-size:15px">'+gz(r.gz)+'</td><td>'+esc(r.nayin)+'</td><td>'+esc(r.shi_shen)+'</td><td>'+(r.dayun_gz==="—"?"—":gz(r.dayun_gz))+'</td><td>'+esc(r.flow_palace)+'</td><td>'+(sihuaTxt||"—")+'</td><td>'+r.score+'</td><td><span class="pill '+clsOf(r.grade)+'">'+esc(r.grade)+'</span></td><td style="text-align:left">'+esc(r.advice)+'</td></tr>');
+      H.push('<tr'+(r.is_current?' style="background:#fff7e0"':'')+'><td>'+(r.is_current?'<b>'+r.year+'★</b>':r.year)+'</td><td>'+r.age+'</td><td class="pillar" style="font-size:15px">'+gz(r.gz)+'</td><td>'+esc(r.nayin)+'</td><td>'+esc(r.shi_shen)+'</td><td>'+(r.dayun_gz==="—"?"—":gz(r.dayun_gz))+'</td><td>'+esc(r.flow_palace)+'</td><td>'+(sihuaTxt||"—")+'</td><td>'+(r.zodiac?(esc(r.zodiac.animal)+(r.zodiac.rel_type?' <span class="pill '+(r.zodiac.rel_lvl==="吉"?'hi':(r.zodiac.rel_lvl==="凶"?'lo':'mid'))+'">'+esc(r.zodiac.rel_type)+'</span>':'')):'—')+'</td><td>'+r.score+'</td><td><span class="pill '+clsOf(r.grade)+'">'+esc(r.grade)+'</span></td><td style="text-align:left">'+esc(r.advice)+'</td></tr>');
     });
     H.push('</table>');
     H.push('<h3>逐岁年度指导（事业 / 财运 / 人际 / 健康 / 时机）</h3>');
@@ -11145,7 +11380,7 @@
     H.push('<span class="cons-hi">高一致 '+cv.cons_counts["高一致"]+'</span> ｜ ');
     H.push('<span class="cons-mid">中一致 '+cv.cons_counts["中一致"]+'</span> ｜ ');
     H.push('<span class="cons-bad">分歧 '+cv.cons_counts["分歧"]+'</span></div>');
-    var sysCols = ["四柱八字","紫微斗数","周易卦象","铁板神数"];
+    var sysCols = ["四柱八字","紫微斗数","周易卦象","铁板神数","西洋占星","生肖流年"];
     if(ctx.face) sysCols.push("面相");
     if(ctx.palm) sysCols.push("手相");
     H.push('<table style="margin-top:10px"><tr><th>维度</th>'+sysCols.map(function(s){return '<th>'+s+'</th>';}).join('')+'<th>一致性</th><th>综合评级</th></tr>');
@@ -11252,13 +11487,13 @@
       H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.tip) + '</td></tr>');
     });
     H.push('</table>');
-    H.push('<h3>大运阶段详批（主题 · 关键转折年）</h3><table><tr><th>年龄段</th><th>大运</th><th>阶段主题</th><th>关键转折年</th><th>阶段建议</th></tr>');
+    H.push('<h3>大运阶段详批（主题 · 关键转折年）</h3><table><tr><th>年龄段</th><th>大运</th><th>阶段主题</th><th>关键转折年</th><th>阶段建议</th><th>八维交叉</th></tr>');
     ctx.dayun_detail.forEach(function (p) {
-      H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.theme) + '</td><td style="text-align:left">' + esc(p.turning) + '</td><td style="text-align:left">' + esc(p.tip) + '</td></tr>');
+      H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.theme) + '</td><td style="text-align:left">' + esc(p.turning) + '</td><td style="text-align:left">' + esc(p.tip) + '</td><td><span class="pill ' + (p.cross === "吉" ? 'hi' : (p.cross === "凶" ? 'lo' : 'mid')) + '">' + (p.cross ? esc(p.cross) : '—') + '</span></td></tr>');
     });
     H.push('</table>');
     H.push('<div class="note">以上为基于多维交叉验证的「自我认知与阶段参考」，并非宿命判定；重大人生决策请结合自身实际与现实反馈。</div>');
-    H.push('<div class="note">大运建议已接入六维：①八字四柱（干支十神＋地支藏干喜忌）②紫微斗数（大限宫位＋运干四化飞星落宫）③周易（每运一卦，干支化数起卦）④铁板神数（运干化数推演大运数序）⑤面相/手相（勾选时并入交叉验证）⑥流年逐年评分。紫微大限自命宫起每运进一宫、顺逆依命局阴阳与性别；铁板数、本运卦均为数序/卦象推演之参考，非定数。</div>');
+    H.push('<div class="note">大运建议已接入八维：①八字四柱（干支十神＋地支藏干喜忌）②紫微斗数（大限宫位＋运干四化飞星落宫）③周易（每运一卦，干支化数起卦）④铁板神数（运干化数推演大运数序）⑤西洋占星（本命盘＋次限/流年行运，依出生地经纬度推算，行运太阳/木土落座与重点相位）⑥生肖流年（年柱定生肖、逐年论太岁三合/六冲/刑害破）⑦面相/手相（勾选时并入交叉验证）⑧流年逐年评分。八维结论在每步大运汇总为「八维交叉：吉/平/凶」。紫微大限自命宫起每运进一宫、顺逆依命局阴阳与性别；铁板数、本运卦、西洋行运、生肖太岁均为数序/星象/民俗推演之参考，非定数。</div>');
     H.push('</div>');
 
     var rep=document.getElementById("report");
