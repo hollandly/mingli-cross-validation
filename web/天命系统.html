@@ -10589,6 +10589,183 @@
     return out;
   }
 
+  // ============ 过往人生推断（性格/家庭/婚姻/事业/财运/健康 分期回溯）============
+  function _pal(ziwei, name) {
+    var r = ziwei.palaces.filter(function (p) { return p.palace === name; });
+    return r.length ? r[0] : { palace: name, zhi: "—", stars: [], fu_stars: [] };
+  }
+  function _spouse_gods(gender) { return gender === "女" ? ["正官", "七杀"] : ["正财", "偏财"]; }
+  function _marriage_move(yz, dz) {
+    if (_chong(yz, dz) || _he6(yz, dz)) return true;
+    if (["子未", "未子", "丑午", "午丑", "寅巳", "巳寅", "卯辰", "辰卯", "申亥", "亥申", "酉戌", "戌酉"].indexOf(yz + dz) >= 0) return true;
+    if ((["寅", "巳", "申"].indexOf(yz) >= 0 && ["寅", "巳", "申"].indexOf(dz) >= 0 && yz !== dz) ||
+        (["丑", "戌", "未"].indexOf(yz) >= 0 && ["丑", "戌", "未"].indexOf(dz) >= 0 && yz !== dz) ||
+        (yz === "子" && dz === "卯") || (yz === "卯" && dz === "子")) return true;
+    return false;
+  }
+  // 用大运分段 + 流年引动，反推自出生至今各人生领域已发生/将发生的轨迹（供用户对照实际印证）
+  function infer_past_life(bazi, ziwei, cv, dayun_detail, solar) {
+    var now_year = new Date().getFullYear();
+    var birth_year = solar.getFullYear();
+    var now_age = Math.max(1, now_year - birth_year);
+    var day_gan = bazi.day_master, de = bazi.day_element, strength = bazi.strength, gender = bazi.gender;
+    var xi_ji = _xi_ji_sets(bazi), xi_set = xi_ji[0], ji_set = xi_ji[1];
+    var enMap = {}; if (cv && cv.dayun_enrich) cv.dayun_enrich.forEach(function (e) { enMap[e.gz] = e; });
+    var fp_year = _pal(ziwei, "父母"), fp_sib = _pal(ziwei, "兄弟"), fp_sp = _pal(ziwei, "夫妻"), fp_ch = _pal(ziwei, "子女"), fp_career = _pal(ziwei, "官禄"), fp_wealth = _pal(ziwei, "财帛"), fp_health = _pal(ziwei, "疾厄");
+    var year_zhi = bazi.four_pillars.year.gz[1], day_zhi = bazi.four_pillars.day.gz[1], hour_zhi = bazi.four_pillars.hour.gz[1];
+    var weak_elem = ELEMENTS[0], we = 99; ELEMENTS.forEach(function (e) { if (bazi.element_count[e] < we) { we = bazi.element_count[e]; weak_elem = e; } });
+    var organ = _organ_of(weak_elem);
+    var tg = bazi.ten_gods;
+
+    // ===== 性格 =====
+    var key_gods = tg.filter(function (g) { return ["伤官", "食神", "正印", "偏印", "七杀", "正官", "比肩", "劫财"].indexOf(g) >= 0; });
+    var char_traits = [];
+    if (tg.indexOf("伤官") >= 0 || tg.indexOf("食神") >= 0) char_traits.push("聪明外露、善表达才艺");
+    if (tg.indexOf("正印") >= 0 || tg.indexOf("偏印") >= 0) char_traits.push("内敛好学、重精神层面");
+    if (tg.indexOf("七杀") >= 0) char_traits.push("刚毅果决、抗压敢闯");
+    if (tg.indexOf("正官") >= 0) char_traits.push("自律守规、责任感强");
+    if (tg.indexOf("比肩") >= 0 || tg.indexOf("劫财") >= 0) char_traits.push("重同侪、好争强");
+    if (tg.indexOf("正财") >= 0 || tg.indexOf("偏财") >= 0) char_traits.push("务实重利、落地导向");
+    if (!char_traits.length) char_traits.push("性情中和、随境而转");
+    var char_core = "日主" + de + "（" + day_gan + "）" + strength + "，十神以「" + (key_gods.slice(0, 3).join("、") || "中和") + "」为显，先天性格" +
+      (strength === "身旺" ? "偏主动外放，自主性强但易固执" : strength === "身弱" ? "偏内敛依赖，善借力但易犹豫" : "中和，能屈能伸、随势调柔") +
+      "；紫微命宫主星「" + (ziwei.main_star || "—") + "」赋予底色，再叠加大运引动而各有阶段侧重。";
+    var char_phases = [];
+    bazi.dayun.forEach(function (d) {
+      var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+      if (a0 > now_age) return;
+      var god = ten_god(day_gan, d.gz[0]);
+      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
+      var tone = verdict === "凶" ? "此阶段易因「" + god + "」之力受挫、内耗，性格趋于防御"
+        : verdict === "吉" ? "此阶段「" + god + "」得用，性格局面更顺、更敢施展"
+        : "此阶段「" + god + "」平进，性格趋于该运本色";
+      char_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: tone });
+    });
+
+    // ===== 家庭（六亲）=====
+    var bi_jie = tg.filter(function (g) { return g === "比肩" || g === "劫财"; }).length;
+    var parents_txt = "年柱「" + bazi.four_pillars.year.gz + "」（纳音" + nayin_name(bazi.four_pillars.year.gz) + "）为父母宫，紫微父母宫" + (fp_year.stars.join("") || "空宫") + "；" +
+      (strength === "身旺" ? "出身多得家庭支撑，独立意识成形早" : "身弱则较受长辈荫护，依赖感偏强") + "。童年家境与双亲缘分深浅，可凭实际印证。";
+    var siblings_txt = "月柱「" + bazi.four_pillars.month.gz + "」为兄弟宫，比劫" + bi_jie + "现，紫微兄弟宫" + (fp_sib.stars.join("") || "空宫") + "；" +
+      (bi_jie >= 2 ? "手足缘分不薄，同辈助力可借，亦主分争" : "手足数量不多或缘分偏淡，宜惜同辈之谊") + "。";
+    var child_gods = gender === "女" ? tg.filter(function (g) { return g === "食神" || g === "伤官"; }).length : tg.filter(function (g) { return g === "正官" || g === "七杀"; }).length;
+    var children_txt = "时柱「" + bazi.four_pillars.hour.gz + "」为子女宫，紫微子女宫" + (fp_ch.stars.join("") || "空宫") + "；子女星（" + (gender === "女" ? "食伤" : "官杀") + "）" + child_gods + "现，" +
+      (child_gods >= 1 ? "子女缘分有基，晚景可得子女之伴" : "子女缘分偏弱或来得晚，宜顺其自然") + "。";
+    var fam_events = [];
+    for (var a = 1; a <= now_age; a++) {
+      var yz = GZ60[(birth_year + a - 1 - 4) % 60][1];
+      if (_chong(yz, year_zhi) || _he6(yz, year_zhi)) {
+        var dy = _active_dayun(bazi, a); var god2 = dy[0] ? ten_god(day_gan, dy[0][0]) : "—";
+        fam_events.push({ age: a, year: birth_year + a - 1, cat: "家庭", label: "家宅/长辈缘波动", detail: a + "岁流年地支与年柱（父母宫）" + (_chong(yz, year_zhi) ? "相冲" : "相合") + "，主家宅或长辈缘分有变动；行" + (dy[0] || "—") + "大运，宜多顾亲缘、少远行迁动。" });
+      }
+    }
+    fam_events = fam_events.slice(0, 3);
+
+    // ===== 婚姻 =====
+    var sg = _spouse_gods(gender);
+    var spouse_cnt = tg.filter(function (g) { return sg.indexOf(g) >= 0; }).length;
+    var sp_god0 = tg.filter(function (g) { return sg.indexOf(g) >= 0; })[0] || "";
+    var marriage_trait = "配偶星（" + (gender === "女" ? "官杀" : "财星") + "）" + spouse_cnt + "现，夫妻宫日支为「" + day_zhi + "」（" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "），紫微夫妻宫" + (fp_sp.stars.join("") || "空宫") + "；" +
+      (spouse_cnt >= 1 ? "配偶多有主见、在关系中扮演角色明显" : "配偶星偏弱，婚姻宜晚成、宜择能互补者") +
+      "。相处上" + (["正财", "正官"].indexOf(sp_god0) >= 0 ? "偏稳定务实" : "偏灵动多变") + "。";
+    var m_window = [];
+    bazi.dayun.forEach(function (d) {
+      var a0 = Math.round(d.start_age);
+      if (a0 < 18 || a0 > 34) return;
+      var god = ten_god(day_gan, d.gz[0]);
+      if (sg.indexOf(god) >= 0 || god === "正印" || god === "正官") {
+        var mid = Math.round((a0 + Math.min(d.end_age - 1, 34)) / 2);
+        if (mid <= now_age) m_window.push({ age: mid, year: birth_year + mid - 1, cat: "婚姻", label: "适婚运窗口", detail: mid + "岁前后行「" + d.gz + "」大运（" + god + "），为成家适运；流年再引动夫妻宫，多主婚缘落实。" });
+      }
+    });
+    var m_events = [];
+    for (var a2 = 18; a2 <= Math.min(40, now_age); a2++) {
+      var yz2 = GZ60[(birth_year + a2 - 1 - 4) % 60][1];
+      if (_marriage_move(yz2, day_zhi)) {
+        var dy3 = _active_dayun(bazi, a2); var g3 = dy3[0] ? ten_god(day_gan, dy3[0][0]) : "—";
+        if (sg.indexOf(g3) >= 0 || g3 === "正印" || g3 === "正官")
+          m_events.push({ age: a2, year: birth_year + a2 - 1, cat: "婚姻", label: "夫妻宫引动", detail: a2 + "岁流年地支与日支（夫妻宫）相引动，且行运逢「" + (dy3[0] || "—") + "」（" + g3 + "），主婚恋关键节点。" });
+      }
+    }
+    m_events = m_events.slice(0, 2);
+    var marriage_events = m_window.concat(m_events);
+
+    // ===== 事业 =====
+    var career_phases = [], career_events = [];
+    bazi.dayun.forEach(function (d) {
+      var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+      if (a0 > now_age) return;
+      var god = ten_god(day_gan, d.gz[0]);
+      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
+      var desc = null;
+      if (god === "正官" || god === "七杀") desc = (verdict === "凶" ? "事业压力与是非偏多，宜守岗明责" : "事业进阶、责任加重，宜争位掌权") + "（" + god + "运）";
+      else if (god === "正印" || god === "偏印") desc = "利学习考证、沉淀专业，宜厚积（" + god + "运）";
+      else if (god === "食神" || god === "伤官") desc = (verdict === "凶" ? "才锋易惹是非，宜慎言维稳" : "才艺外显、利创新变动") + "（" + god + "运）";
+      else if (god === "正财" || god === "偏财") desc = "务实落地、重业务现金流（" + god + "运）";
+      else desc = "平运守成，稳扎稳打（" + god + "运）";
+      career_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: desc });
+    });
+    for (var a3 = 1; a3 <= now_age; a3++) {
+      var yz3 = GZ60[(birth_year + a3 - 1 - 4) % 60][1];
+      var dy4 = _active_dayun(bazi, a3); var g4 = dy4[0] ? ten_god(day_gan, dy4[0][0]) : "—";
+      if ((_chong(yz3, fp_career.zhi) || _he6(yz3, fp_career.zhi)) && (g4 === "正官" || g4 === "七杀" || g4 === "正印")) {
+        career_events.push({ age: a3, year: birth_year + a3 - 1, cat: "事业", label: "事业关键年", detail: a3 + "岁流年引动官禄宫（" + fp_career.zhi + "），行「" + (dy4[0] || "—") + "」运（" + g4 + "），主事业转折或进位。" });
+      }
+    }
+    career_events = career_events.slice(0, 3);
+
+    // ===== 财运 =====
+    var wealth_phases = [], wealth_events = [];
+    bazi.dayun.forEach(function (d) {
+      var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+      if (a0 > now_age) return;
+      var god = ten_god(day_gan, d.gz[0]);
+      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
+      var desc = null;
+      if (god === "正财" || god === "偏财") desc = (verdict === "凶" ? "财来财去、防破耗" : "财源可聚、务实生财") + "（" + god + "运）";
+      else if (god === "食神" || god === "伤官") desc = "以才生财、利技艺变现（" + god + "运）";
+      else if (god === "正官" || god === "七杀") desc = "以职权生财、薪俸为主（" + god + "运）";
+      else desc = "财运平稳、宜守不宜冒（" + god + "运）";
+      wealth_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: desc });
+    });
+    for (var a4 = 1; a4 <= now_age; a4++) {
+      var dy5 = _active_dayun(bazi, a4); var g5 = dy5[0] ? ten_god(day_gan, dy5[0][0]) : "—";
+      if ((g5 === "正财" || g5 === "偏财") && xi_set.indexOf(g5) >= 0)
+        wealth_events.push({ age: a4, year: birth_year + a4 - 1, cat: "财运", label: "进财年", detail: a4 + "岁行「" + (dy5[0] || "—") + "」（财星为喜），主进财或业务增收。" });
+      else if (g5 === "劫财" || (g5 === "偏财" && ji_set.indexOf(g5) >= 0))
+        wealth_events.push({ age: a4, year: birth_year + a4 - 1, cat: "财运", label: "破财风险年", detail: a4 + "岁行「" + (dy5[0] || "—") + "」（" + g5 + "），主分夺或意外耗财，宜守现金流。" });
+    }
+    wealth_events = wealth_events.slice(0, 4);
+
+    // ===== 健康 =====
+    var health_base = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应" + organ + "；先天须留意该系统的养护，作息与情志为要。";
+    var health_warn = [];
+    for (var a5 = 1; a5 <= now_age; a5++) {
+      var yz5 = GZ60[(birth_year + a5 - 1 - 4) % 60][1];
+      var dy6 = _active_dayun(bazi, a5); var g6 = dy6[0] ? ten_god(day_gan, dy6[0][0]) : "—";
+      if (_chong(yz5, fp_health.zhi) || _he6(yz5, fp_health.zhi)) {
+        var en6 = enMap[dy6[0]];
+        if (!en6 || !en6.cross || en6.cross.verdict !== "吉")
+          health_warn.push({ age: a5, year: birth_year + a5 - 1, cat: "健康", label: "健康波动年", detail: a5 + "岁流年引动疾厄宫（" + fp_health.zhi + "）" + (en6 && en6.cross ? "，该运八维交叉" + en6.cross.verdict : "") + "，宜体检、防「" + organ + "」小恙。" });
+      }
+    }
+    health_warn = health_warn.slice(0, 3);
+
+    var timeline = fam_events.concat(marriage_events, career_events, wealth_events, health_warn);
+    timeline.sort(function (x, y) { return x.age - y.age; });
+
+    return {
+      now_age: now_age, birth_year: birth_year,
+      personality: { core: char_core, traits: char_traits, phases: char_phases },
+      family: { parents: parents_txt, siblings: siblings_txt, children: children_txt, events: fam_events },
+      marriage: { spouse_star: (gender === "女" ? "官杀" : "财星"), spouse_count: spouse_cnt, spouse_palace: day_zhi, palace_star: fp_sp.stars.join("") || "空宫", trait: marriage_trait, window: m_window, events: marriage_events },
+      career: { phases: career_phases, events: career_events },
+      wealth: { phases: wealth_phases, events: wealth_events },
+      health: { base: health_base, warnings: health_warn },
+      timeline: timeline
+    };
+  }
+
 
   // ============ 流年 ============
   var JI_MAIN = { "紫微": 1, "太阳": 1, "武曲": 1, "天同": 1, "天府": 1, "太阴": 1, "天相": 1, "天梁": 1 };
@@ -10965,6 +11142,7 @@
     var yongshen = _yongshen_map(b, mingge);
     var dayun_detail = _dayun_detail(b, solar.getFullYear(), yj, z, tb, cv.dayun_enrich);
     var action_playbook = _action_playbook(b, cv, liu, solar.getFullYear(), dayun_detail);
+    var past_inf = infer_past_life(b, z, cv, dayun_detail, solar);
     var ziwei_svg = build_ziwei_svg(z);
     var fortune_svg = fortune_trend_svg(liu);
     var radar_wuxing = radar_svg(ELEMENTS, ELEMENTS.map(function (e) { return b.element_count[e]; }), { title: "五行分布", max: 8 });
@@ -10987,6 +11165,7 @@
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, fortune_svg: fortune_svg,
       elem_data: elem_data,
       mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail, action_playbook: action_playbook,
+      past_inference: past_inf,
       face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
       palm: palmSig ? { signals: palmSig, obs: meta.palmObs, px: meta.palmPx, img: meta.palmImg } : null
     };
@@ -11373,8 +11552,47 @@
     H.push('<span class="note">CSV 做逐年追踪；保存后可从「我的排盘」随时打开；PDF 可打印/分享。</span></div>');
     H.push('</div>');
 
+    // 过往人生回溯（性格/家庭/婚姻/事业/财运/健康）
+    H.push('<div class="card"><h2>七、过往人生回溯（性格 / 家庭 / 婚姻 / 事业 / 财运 / 健康）</h2>');
+    var P = ctx.past_inference;
+    H.push('<div class="note">以下依据本命八字、紫微十二宫与八维交叉，按大运分段回溯自出生至今各人生领域的轨迹与关键年份，供对照实际经历印证（非定数推算）。当前已回溯至 ' + P.now_age + ' 岁。</div>');
+    H.push('<h3>性格（先天特质与各阶段侧重）</h3>');
+    H.push('<div style="text-align:left">' + esc(P.personality.core) + '</div>');
+    H.push('<div style="text-align:left;margin-top:4px">关键特质：' + P.personality.traits.map(function (t) { return '<span class="pill mid">' + esc(t) + '</span>'; }).join(' ') + '</div>');
+    H.push('<table><tr><th>年龄段</th><th>大运</th><th>该阶段性格侧重</th></tr>');
+    P.personality.phases.forEach(function (p) { H.push('<tr><td>' + esc(p.age_range) + '</td><td class="pillar" style="font-size:14px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.desc) + '</td></tr>'); });
+    H.push('</table>');
+    H.push('<h3>家庭（六亲：父母 / 兄弟 / 子女）</h3>');
+    H.push('<div style="text-align:left"><b>父母：</b>' + esc(P.family.parents) + '</div>');
+    H.push('<div style="text-align:left"><b>兄弟：</b>' + esc(P.family.siblings) + '</div>');
+    H.push('<div style="text-align:left"><b>子女：</b>' + esc(P.family.children) + '</div>');
+    if (P.family.events.length) { H.push('<ul class="ev">'); P.family.events.forEach(function (e) { H.push('<li><b>' + e.age + '岁（' + e.year + '）</b> ' + esc(e.label) + '：' + esc(e.detail) + '</li>'); }); H.push('</ul>'); }
+    H.push('<h3>婚姻</h3>');
+    H.push('<div style="text-align:left">' + esc(P.marriage.trait) + '</div>');
+    if (P.marriage.window.length) H.push('<div style="text-align:left"><b>适婚运窗口（命理推断）：</b>' + P.marriage.window.map(function (w) { return w.age + '岁（' + w.year + '）'; }).join('、') + '</div>');
+    if (P.marriage.events.length) { H.push('<ul class="ev">'); P.marriage.events.forEach(function (e) { H.push('<li><b>' + e.age + '岁（' + e.year + '）</b> ' + esc(e.label) + '：' + esc(e.detail) + '</li>'); }); H.push('</ul>'); }
+    H.push('<h3>事业</h3>');
+    H.push('<table><tr><th>年龄段</th><th>大运</th><th>该阶段事业基调</th></tr>');
+    P.career.phases.forEach(function (p) { H.push('<tr><td>' + esc(p.age_range) + '</td><td class="pillar" style="font-size:14px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.desc) + '</td></tr>'); });
+    H.push('</table>');
+    if (P.career.events.length) { H.push('<ul class="ev">'); P.career.events.forEach(function (e) { H.push('<li><b>' + e.age + '岁（' + e.year + '）</b> ' + esc(e.label) + '：' + esc(e.detail) + '</li>'); }); H.push('</ul>'); }
+    H.push('<h3>财运</h3>');
+    H.push('<table><tr><th>年龄段</th><th>大运</th><th>该阶段财运基调</th></tr>');
+    P.wealth.phases.forEach(function (p) { H.push('<tr><td>' + esc(p.age_range) + '</td><td class="pillar" style="font-size:14px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.desc) + '</td></tr>'); });
+    H.push('</table>');
+    if (P.wealth.events.length) { H.push('<ul class="ev">'); P.wealth.events.forEach(function (e) { H.push('<li><b>' + e.age + '岁（' + e.year + '）</b> ' + esc(e.label) + '：' + esc(e.detail) + '</li>'); }); H.push('</ul>'); }
+    else H.push('<div class="note">依大运阶段论财运基调（见上表），无特别突出的财星引动年；务实守成为要。</div>');
+    H.push('<h3>健康</h3>');
+    H.push('<div style="text-align:left">' + esc(P.health.base) + '</div>');
+    if (P.health.warnings.length) { H.push('<ul class="ev">'); P.health.warnings.forEach(function (e) { H.push('<li><b>' + e.age + '岁（' + e.year + '）</b> ' + esc(e.label) + '：' + esc(e.detail) + '</li>'); }); H.push('</ul>'); }
+    H.push('<h3>人生关键年（按年龄排序 · 性格 / 家庭 / 婚姻 / 事业 / 财运 / 健康）</h3>');
+    H.push('<table><tr><th>岁</th><th>年</th><th>领域</th><th>事件</th></tr>');
+    P.timeline.forEach(function (e) { H.push('<tr><td>' + e.age + '</td><td>' + e.year + '</td><td>' + esc(e.cat) + '</td><td style="text-align:left">' + esc(e.detail) + '</td></tr>'); });
+    H.push('</table>');
+    H.push('</div>');
+
     // 交叉验证
-    H.push('<div class="card"><h2>七、多维交叉验证与分级结论</h2>');
+    H.push('<div class="card"><h2>八、多维交叉验证与分级结论</h2>');
     var gcls = cv.grade.indexOf("高一致")>=0?"grade-hi":(cv.grade.indexOf("分歧")>=0?"grade-bad":"grade-mid");
     H.push('<div class="grade-banner '+gcls+'">综合一致性：'+esc(cv.grade)+'</div>');
     H.push('<div class="kv" style="margin-top:8px"><span class="k">一致维度统计：</span>');
@@ -11402,7 +11620,7 @@
     H.push('</div>');
 
     // 人生行动指南（核心 · 用户视角：把交叉验证结论翻译成可执行的避坑手册）
-    H.push('<div class="card"><h2>八、人生行动指南（核心建议）</h2>');
+    H.push('<div class="card"><h2>九、人生行动指南（核心建议）</h2>');
     H.push('<div class="note">这一节把前文的「多维交叉验证」结论，翻译成你<b>现在就能用</b>的避坑手册：先判断当下该进攻还是防守，再给六类重大决策亮红绿灯，最后列清该做 / 别做 / 留意。所有内容均为<b>决策参考与自我觉察</b>，非宿命判定。</div>');
     var wcls = ap.window.cls==="hi"?"grade-hi":(ap.window.cls==="lo"?"grade-bad":"grade-mid");
     H.push('<div class="win-banner '+wcls+'">当下判断：'+esc(ap.window.verdict)+'</div>');
@@ -11469,7 +11687,7 @@
     H.push('<div class="actions" style="margin-top:10px"><button class="btn ghost" id="btnBack">↑ 返回录入 / 修改信息</button></div>');
 
     // 人生指导总览
-    H.push('<div class="card"><h2>九、人生指导总览</h2>');
+    H.push('<div class="card"><h2>十、人生指导总览</h2>');
     var lg = cv.life_guidance;
     H.push('<div class="grade-banner grade-mid" style="text-align:left;font-size:14px;font-weight:500;line-height:1.9;color:var(--ink)">' + esc(lg.overall) + '</div>');
     H.push('<div class="two" style="margin-top:12px"><div><h3>✅ 你的优势领域</h3><ul class="tips">');
