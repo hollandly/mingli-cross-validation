@@ -10235,7 +10235,20 @@
     var healthM = dimOf["健康"];
     if (healthM && healthM.mean_level < 3) dontL.push("健康提示偏多：别拿身体好赌、别长期透支，安排一次针对性体检。");
     cv.review_flags.forEach(function (f) { watchL.push(f); });
-    cv.matrix.forEach(function (m) { if (m.consistency === "分歧") watchL.push("维度「" + m.dimension + "」各体系结论分歧较大，相关决策放慢、以现实反馈校准。"); });
+    cv.matrix.forEach(function (m) {
+      if (m.consistency !== "分歧") return;
+      var dim = m.dimension;
+      var note;
+      if (dim === "性格") note = "性格维度：八字日主强弱、紫微命宫主星与西洋上升星座对气质的描述存在分歧——你在不同场合可能呈现不同面貌，重大人际决策前多观察真实反馈，别凭单一印象定调。";
+      else if (dim === "事业") note = "事业维度：八字官杀/印星与紫微官禄宫、西洋第十宫（MC）的提示方向不完全一致——职业选择宜小步试错，先验证再放大投入，避免押注单一赛道。";
+      else if (dim === "财运") note = "财运维度：八字财星喜忌、紫微财帛宫与西洋第二/八宫的财富信号有分歧——理财与投资只做闲钱、不留大额应收、不替人担保。";
+      else if (dim === "婚姻") note = "婚姻维度：八字配偶星/夫妻宫、紫微夫妻宫与西洋第七宫的婚恋取向有分歧——择偶标准宜重长期相处，不被一时感觉或外部条件推着走。";
+      else if (dim === "家庭(六亲)") note = "家庭维度：八字六亲宫位与紫微十二宫对亲缘的判断有分歧——与家人/合伙人的重大约定要白纸黑字，防因人情产生后续摩擦。";
+      else if (dim === "健康") note = "健康维度：八字五行偏枯、紫微疾厄宫与西洋第一/六宫的身体信号有分歧——作息与体检不能省，尤其留意命中偏弱脏腑。";
+      else if (dim === "时机运势") note = "时机维度：各体系对当前行动窗口的判断有分歧——大事不赶、小事不拖，重大决定拆成小步验证。";
+      else note = "维度「" + dim + "」各体系结论分歧较大，相关决策放慢、以现实反馈校准。";
+      watchL.push(note);
+    });
     if (cur && cur.key_months && cur.key_months.watch && cur.key_months.watch.length)
       watchL.push("今年宜谨慎月份：" + cur.key_months.watch.join("；") + "（冲动/变动多在此类月份，重大决策尽量避开）。");
     function uniq(a) { var seen = {}, out = []; a.forEach(function (x) { if (!seen[x]) { seen[x] = 1; out.push(x); } }); return out; }
@@ -10604,6 +10617,124 @@
     return false;
   }
   // 用大运分段 + 流年引动，反推自出生至今各人生领域已发生/将发生的轨迹（供用户对照实际印证）
+  
+  // 大运多维故事：深度融合八字/紫微/周易/铁板/西洋/生肖，输出各维度唯一描述
+  function _dayun_story(bazi, d, en, yijing) {
+    var day_gan = bazi.day_master, de = bazi.day_element, strength = bazi.strength, gender = bazi.gender;
+    var xiji = _xi_ji_sets(bazi), xi_set = xiji[0], ji_set = xiji[1];
+    var gz = d.gz;
+    var god = ten_god(day_gan, gz[0]);
+    var score = _dayun_fav(bazi, d, xi_set, ji_set);
+    var fav = score > 0.5, bad = score < -0.5, neutral = !fav && !bad;
+    var cang = ZHI_CANGAN[gz[1]] || [];
+    var cangTxt = cang.map(function(g){ return g + "（" + ten_god(day_gan, g) + "）"; }).join("、");
+    var ny = nayin_name(gz), ny_elem = nayin(gz);
+    var nyRel = (SHENG[ny_elem] === de || ny_elem === de) ? "生扶" : (KE[ny_elem] === de ? "克泄耗" : "中和");
+
+    var day_zhi = bazi.four_pillars.day.gz[1], month_zhi = bazi.four_pillars.month.gz[1], year_zhi = bazi.four_pillars.year.gz[1];
+    var LIUHAII = {"子未":1,"未子":1,"丑午":1,"午丑":1,"寅巳":1,"巳寅":1,"卯辰":1,"辰卯":1,"申亥":1,"亥申":1,"酉戌":1,"戌酉":1};
+    var LIUPOO = {"子酉":1,"酉子":1,"丑辰":1,"辰丑":1,"寅亥":1,"亥寅":1,"卯午":1,"午卯":1,"巳申":1,"申巳":1,"戌未":1,"未戌":1};
+    function in3xing(a,b){ var s=["寅","巳","申"],t=["丑","戌","未"]; return (s.indexOf(a)>=0&&s.indexOf(b)>=0&&a!==b) || (t.indexOf(a)>=0&&t.indexOf(b)>=0&&a!==b) || ((a==="子"&&b==="卯")||(a==="卯"&&b==="子")); }
+    var zhiNotes = [];
+    if (_chong(gz[1], day_zhi)) zhiNotes.push("冲日支夫妻宫（" + day_zhi + "）");
+    else if (_he6(gz[1], day_zhi)) zhiNotes.push("合日支夫妻宫（" + day_zhi + "）");
+    else if (LIUHAII[gz[1]+day_zhi]) zhiNotes.push("害日支夫妻宫（" + day_zhi + "）");
+    else if (LIUPOO[gz[1]+day_zhi]) zhiNotes.push("破日支夫妻宫（" + day_zhi + "）");
+    else if (in3xing(gz[1], day_zhi)) zhiNotes.push("刑日支夫妻宫（" + day_zhi + "）");
+    if (_chong(gz[1], month_zhi)) zhiNotes.push("冲月支事业平台（" + month_zhi + "）");
+    else if (_he6(gz[1], month_zhi)) zhiNotes.push("合月支事业平台（" + month_zhi + "）");
+    if (_chong(gz[1], year_zhi)) zhiNotes.push("冲年支父母根基（" + year_zhi + "）");
+    else if (_he6(gz[1], year_zhi)) zhiNotes.push("合年支父母根基（" + year_zhi + "）");
+    else if (LIUHAII[gz[1]+year_zhi]) zhiNotes.push("害年支父母根基（" + year_zhi + "）");
+
+    var dx = en ? en.daxian : null;
+    var dxPalace = dx ? dx.palace : "—";
+    var dxStar = dx && dx.stars && dx.stars.length ? dx.stars.join("、") : (dxPalace !== "—" ? "空宫借对宫" : "—");
+    var dxSihua = [];
+    if (dx && dx.sihua) { ["禄","权","科","忌"].forEach(function(tag){ if (dx.sihua[tag]) dxSihua.push(tag + "入" + dx.sihua[tag]); }); }
+    var dxFu = dx && dx.fu_stars ? dx.fu_stars.filter(function(s){ return FU_GOOD[s] || FU_BAD[s]; }).join("、") : "";
+
+    var yj = en ? en.yj : null;
+    var tb = en ? en.tb : null;
+    var astro = en ? en.astro : null;
+    var zodiac = en ? en.zodiac : null;
+    var cross = en ? en.cross : null;
+    var verdict = cross ? cross.verdict : (fav ? "吉" : bad ? "凶" : "平");
+
+    function westText() {
+      if (!astro) return "";
+      var t = "西洋次限太阳入" + WEST_SIGNS[astro.prog_sun_sign] + "座第" + astro.prog_sun_house + "宫";
+      t += "（十年自我主题转向" + ["自我形象","财富价值","沟通学习","家庭根基","自我表达","工作健康","婚姻合作","深度转化","远行信仰","事业成就","社群理想","灵性退藏"][astro.prog_sun_house-1] + "）";
+      t += "；木星在" + WEST_SIGNS[astro.jup_sign] + "座、土星在" + WEST_SIGNS[astro.sat_sign] + "座";
+      if (astro.aspects && astro.aspects.length) t += "，相位：" + astro.aspects.join("、");
+      return t;
+    }
+    function shengxiaoText() {
+      if (!zodiac) return "";
+      var t = "十年内三合/六合吉年" + zodiac.fav + "个" + (zodiac.fav_years.length ? "（" + zodiac.fav_years.join("、") + "）" : "");
+      t += "，犯太岁年" + zodiac.unfav + "个" + (zodiac.unfav_years.length ? "（" + zodiac.unfav_years.join("、") + "）" : "");
+      return t;
+    }
+    function tiebanText() {
+      if (!tb || tb.theme === "命局未起运") return "";
+      return "铁板数" + tb.number + "主「" + tb.theme + "」";
+    }
+    function yijingText() {
+      if (!yj || !yj.ben_gua) return (yijing && yijing.ben_gua) ? "本命卦「" + yijing.ben_gua + "」(" + yijing.gua_nature + ")" : "";
+      return "本运卦「" + yj.ben_gua + "」(" + yijingTextElem(yj) + "，" + yj.gua_nature + ")";
+    }
+    function yijingTextElem(y) {
+      return BAGUA_ELEMENT[y.up_gua] || "—";
+    }
+
+    var base = "运干" + gz[0] + "透出「" + god + "」，运支" + gz[1] + "藏" + cangTxt + "；纳音" + ny + "（" + ny_elem + "，" + nyRel + "日主）；喜忌得分" + (score > 0 ? "+" : "") + Math.round(score * 10) / 10 + "，属" + (fav ? "喜运" : bad ? "忌运" : "平运") + (zhiNotes.length ? "；地支关系：" + zhiNotes.join("、") : "") + "。";
+    var dxBase = "紫微大限行「" + dxPalace + "宫」，主星" + dxStar + (dxSihua.length ? "，四化" + dxSihua.join("、") : "") + (dxFu ? "，辅星" + dxFu : "") + "。";
+
+    // 性格
+    var starNature = dxStar !== "—" ? (STAR_NATURE[dxStar.split("、")[0]] || "主星塑造气场") : "大限宫位影响重心";
+    var personTone = fav ? "外在舒展、内在主见增强，敢表达也敢争取" : bad ? "外收内紧、思虑偏重，易有压力感，宜守口守心" : "气场中和，不张扬亦不软弱，顺势而为";
+    var personYao = (yj && yj.meaning) ? yj.meaning.replace(/。/g, "").slice(0, 18) : "";
+    var personality = base + dxBase + (tiebanText() ? tiebanText() + "。" : "") + (yijingText() ? "周易：" + yijingText() + (personYao ? "——" + personYao : "") + "。" : "") + (westText() ? westText() + "。" : "") + "阶段气质：" + dxPalace + "宫之事渗入日常，主星" + dxStar.split("、")[0] + "令你" + starNature + "；" + personTone + "。" + (shengxiaoText() ? "生肖层面：" + shengxiaoText() + "。" : "") + "【八维交叉：" + verdict + "】";
+
+    // 家庭（六亲）
+    var familyPalaceNote = dxPalace === "父母" ? "大限正坐父母宫，亲缘事件被放大" : dxPalace === "兄弟" ? "大限坐兄弟宫，手足同辈关系成主题" : dxPalace === "子女" ? "大限坐子女宫，子女或晚辈缘分加深" : "大限未直接坐六亲宫，家庭变动多由地支冲合引发";
+    var family = base + "年柱为父母宫，本运地支与年柱关系决定长辈/家宅起伏。" + dxBase + familyPalaceNote + "。" + (zhiNotes.filter(function(s){ return s.indexOf("年支") >= 0; }).length ? "地支层面：" + zhiNotes.filter(function(s){ return s.indexOf("年支") >= 0; }).join("、") + "，主家宅、长辈或户籍/居所变动。" : "地支与年支无强冲合，家宅相对平稳，宜维系亲情。") + (shengxiaoText() ? "生肖层面：" + shengxiaoText() + "。" : "") + "【八维交叉：" + verdict + "】";
+
+    // 婚姻
+    var spouseGodName = gender === "女" ? "官杀" : "财星";
+    var marriageTone = (zhiNotes.some(function(s){ return s.indexOf("夫妻宫") >= 0; })) ? "本运直接引动日支夫妻宫，婚恋/伴侣关系是这十年绕不开的课题" : "本运未直接冲合夫妻宫，婚姻走势更多取决于流年引动";
+    var marriage = base + "日支" + day_zhi + "为夫妻宫。" + marriageTone + "。" + dxBase + (dxPalace === "夫妻" ? "大限坐夫妻宫，伴侣关系成为人生重心之一。" : dxPalace === "迁移" || dxPalace === "事业" ? "大限重心在" + dxPalace + "，婚姻易受事业/异地因素牵动。" : "大限在" + dxPalace + "宫，婚姻走势顺遂该宫主题。") + (westText() ? "西洋层面：" + westText() + "。" : "") + (shengxiaoText() ? "生肖层面：" + shengxiaoText() + "；三合/六合年份利婚恋落实，犯太岁年份则宜放慢确定关系。" : "") + "【八维交叉：" + verdict + "】";
+
+    // 事业
+    var careerKeyword = { "正官":"掌权进阶、争名位","七杀":"扛责任、闯难关、立威","正印":"学习考证、借平台","偏印":"钻研冷门、补认知","正财":"现金流、业务落地","偏财":"资产增值、机会变现","食神":"才艺表达、以才生财","伤官":"破旧立新、靠创意","比肩":"合伙借力","劫财":"资源共享但防分夺" }[god] || "顺势积累";
+    var careerPalaceNote = dxPalace === "事业" ? "大限坐事业宫，职场进阶机会明显" : dxPalace === "财帛" ? "大限坐财帛宫，事业价值更容易兑现为收入" : dxPalace === "迁移" ? "大限坐迁移宫，事业变动、异地/外出发展概率高" : "大限在" + dxPalace + "宫，事业与" + dxPalace + "领域人事交织";
+    var career = base + "事业十神「" + god + "」主" + careerKeyword + "。" + dxBase + careerPalaceNote + "。" + (yijingText() ? "周易：" + yijingText() + (personYao ? "——此卦象提示事业上" + personYao : "") + "。" : "") + (westText() ? "西洋层面：行运太阳入第" + astro.prog_sun_house + "宫，事业重心转向" + ["自我形象","财富价值","沟通学习","家庭根基","自我表达","工作健康","婚姻合作","深度转化","远行信仰","事业成就","社群理想","灵性退藏"][astro.prog_sun_house-1] + "；木星在" + WEST_SIGNS[astro.jup_sign] + "主机遇窗口，土星在" + WEST_SIGNS[astro.sat_sign] + "主考验领域。" : "") + (shengxiaoText() ? "生肖层面：" + shengxiaoText() + "。" : "") + "【八维交叉：" + verdict + "】";
+
+    // 财运
+    var wealthKeyword = { "正财":"稳定收入与业务现金流","偏财":"流动之财与机会性收益","食神":"以才艺技艺生财","伤官":"靠创意与变动求财","正官":"以职位权力得财","七杀":"高风险高回报之财","正印":"以知识、平台荫护得财","偏印":"以冷门专长或暗财得财","比肩":"合伙分利","劫财":"分夺与竞争之财" }[god] || "守成之财";
+    var wealthPalaceNote = dxPalace === "财帛" ? "大限坐财帛宫，赚钱与理财成为显性主题" : dxPalace === "事业" ? "大限坐事业宫，财源依附于职场进阶" : dxPalace === "田宅" ? "大限坐田宅宫，不动产、家庭资产变动明显" : "大限在" + dxPalace + "宫，财运与该宫人事联动";
+    var wealth = base + "财星十神「" + god + "」主" + wealthKeyword + "。" + dxBase + wealthPalaceNote + "。" + (fav ? "喜用得力，财源较顺，但顺境更要守风控。" : bad ? "忌神发力，财来财去、破耗暗藏，宜缩杠杆、少担保。" : "财气中和，宜稳守、量入为出。") + (yijingText() ? "周易：" + yijingText() + "。" : "") + (shengxiaoText() ? "生肖层面：" + shengxiaoText() + "。" : "") + "【八维交叉：" + verdict + "】";
+
+    // 健康
+    var ec = bazi.element_count, weak_elem = ELEMENTS[0], we = 99;
+    ELEMENTS.forEach(function(e){ if (ec[e] < we){ we = ec[e]; weak_elem = e; } });
+    var weakOrgan = _organ_of(weak_elem);
+    var healthElementNote = (SHENG[ny_elem] === weak_elem || ny_elem === weak_elem) ? "纳音五行补益偏弱脏腑" : (KE[ny_elem] === weak_elem ? "纳音五行加重偏弱脏腑负担" : "纳音五行对偏弱脏腑影响平和");
+    var healthPalaceNote = dxPalace === "疾厄" ? "大限坐疾厄宫，体质与疾厄被放大，宜规律体检" : "大限在" + dxPalace + "宫，健康多与" + dxPalace + "领域压力相关";
+    var health = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应「" + weakOrgan + "」。" + base + "纳音" + ny + "（" + ny_elem + "）" + healthElementNote + "。" + dxBase + healthPalaceNote + "。" + (bad ? "本运忌神发力，易透支或旧恙反复，宜早睡、少应酬、定期查" + weakOrgan + "。" : fav ? "本运喜用得力，体质有修复空间，可借机建立运动与作息规律。" : "本运气场平和，保持常规养护即可，别太折腾身体。") + "【八维交叉：" + verdict + "】";
+
+    // 时机（综合一句话）
+    var timing = "此十年（" + gz + "）" + (fav ? "为喜用窗口，宜主动争取、集中力量办大事；" + verdict + "之运可作进攻背景。" : bad ? "为忌神气场，宜守成避险、补能力补短板；" + verdict + "之运不作大赌。" : "气场中和，宜小步推进、做厚基本盘；" + verdict + "之运以稳为主。") + "紫微在" + dxPalace + "宫，" + (yijingText() ? "本运卦「" + (yj ? yj.ben_gua : yijing.ben_gua) + "」——" + (yj && yj.meaning ? yj.meaning.slice(0, 18) : "") : "") + (astro ? "西洋太阳第" + astro.prog_sun_house + "宫。" : "") + "整体按" + verdict + "运把握节奏。";
+
+    var summary = gz + "运（十神" + god + "，八维交叉" + verdict + "）· 紫微大限" + dxPalace + "宫" + (dxStar !== "—" ? "（主星" + dxStar.split("、")[0] + "）" : "") + (astro ? "· 西洋行运太阳第" + astro.prog_sun_house + "宫" : "");
+    return {
+      gz: gz, god: god, score: score, verdict: verdict, summary: summary,
+      personality: personality, family: family, marriage: marriage,
+      career: career, wealth: wealth, health: health, timing: timing
+    };
+  }
+
+  // 用大运分段 + 流年引动，反推自出生至今各人生领域的轨迹（深度融合八字/紫微/周易/铁板/西洋/生肖）
   function infer_past_life(bazi, ziwei, cv, dayun_detail, solar) {
     var now_year = new Date().getFullYear();
     var birth_year = solar.getFullYear();
@@ -10611,14 +10742,16 @@
     var day_gan = bazi.day_master, de = bazi.day_element, strength = bazi.strength, gender = bazi.gender;
     var xi_ji = _xi_ji_sets(bazi), xi_set = xi_ji[0], ji_set = xi_ji[1];
     var enMap = {}; if (cv && cv.dayun_enrich) cv.dayun_enrich.forEach(function (e) { enMap[e.gz] = e; });
-    var fp_year = _pal(ziwei, "父母"), fp_sib = _pal(ziwei, "兄弟"), fp_sp = _pal(ziwei, "夫妻"), fp_ch = _pal(ziwei, "子女"), fp_career = _pal(ziwei, "官禄"), fp_wealth = _pal(ziwei, "财帛"), fp_health = _pal(ziwei, "疾厄");
-    var year_zhi = bazi.four_pillars.year.gz[1], day_zhi = bazi.four_pillars.day.gz[1], hour_zhi = bazi.four_pillars.hour.gz[1];
+    var dayunMap = {}; if (dayun_detail) dayun_detail.forEach(function (dd) { dayunMap[dd.gz] = dd; });
+    var yijing = cv && cv.yijing ? cv.yijing : { ben_gua: "—", gua_nature: "—", meaning: "" };
+    var fp_sp = _pal(ziwei, "夫妻"), fp_career = _pal(ziwei, "官禄"), fp_wealth = _pal(ziwei, "财帛"), fp_health = _pal(ziwei, "疾厄");
+    var year_zhi = bazi.four_pillars.year.gz[1], day_zhi = bazi.four_pillars.day.gz[1];
     var weak_elem = ELEMENTS[0], we = 99; ELEMENTS.forEach(function (e) { if (bazi.element_count[e] < we) { we = bazi.element_count[e]; weak_elem = e; } });
     var organ = _organ_of(weak_elem);
     var tg = bazi.ten_gods;
 
-    // ===== 性格 =====
-    var key_gods = tg.filter(function (g) { return ["伤官", "食神", "正印", "偏印", "七杀", "正官", "比肩", "劫财"].indexOf(g) >= 0; });
+    // 先天性格核心（不变，但增强唯一性）
+    var key_gods = tg.filter(function (g) { return ["伤官","食神","正印","偏印","七杀","正官","比肩","劫财"].indexOf(g) >= 0; });
     var char_traits = [];
     if (tg.indexOf("伤官") >= 0 || tg.indexOf("食神") >= 0) char_traits.push("聪明外露、善表达才艺");
     if (tg.indexOf("正印") >= 0 || tg.indexOf("偏印") >= 0) char_traits.push("内敛好学、重精神层面");
@@ -10629,45 +10762,59 @@
     if (!char_traits.length) char_traits.push("性情中和、随境而转");
     var char_core = "日主" + de + "（" + day_gan + "）" + strength + "，十神以「" + (key_gods.slice(0, 3).join("、") || "中和") + "」为显，先天性格" +
       (strength === "身旺" ? "偏主动外放，自主性强但易固执" : strength === "身弱" ? "偏内敛依赖，善借力但易犹豫" : "中和，能屈能伸、随势调柔") +
-      "；紫微命宫主星「" + (ziwei.main_star || "—") + "」赋予底色，再叠加大运引动而各有阶段侧重。";
+      "；紫微命宫主星「" + (ziwei.main_star || "—") + "」赋予底色。";
+
+    // 性格阶段：用 _dayun_story
     var char_phases = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
       if (a0 > now_age) return;
-      var god = ten_god(day_gan, d.gz[0]);
-      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
-      var tone = verdict === "凶" ? "此阶段易因「" + god + "」之力受挫、内耗，性格趋于防御"
-        : verdict === "吉" ? "此阶段「" + god + "」得用，性格局面更顺、更敢施展"
-        : "此阶段「" + god + "」平进，性格趋于该运本色";
-      char_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: tone });
+      var en = enMap[d.gz];
+      var story = _dayun_story(bazi, d, en, yijing);
+      char_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: story.personality });
     });
 
-    // ===== 家庭（六亲）=====
+    // 家庭六亲
     var bi_jie = tg.filter(function (g) { return g === "比肩" || g === "劫财"; }).length;
-    var parents_txt = "年柱「" + bazi.four_pillars.year.gz + "」（纳音" + nayin_name(bazi.four_pillars.year.gz) + "）为父母宫，紫微父母宫" + (fp_year.stars.join("") || "空宫") + "；" +
-      (strength === "身旺" ? "出身多得家庭支撑，独立意识成形早" : "身弱则较受长辈荫护，依赖感偏强") + "。童年家境与双亲缘分深浅，可凭实际印证。";
-    var siblings_txt = "月柱「" + bazi.four_pillars.month.gz + "」为兄弟宫，比劫" + bi_jie + "现，紫微兄弟宫" + (fp_sib.stars.join("") || "空宫") + "；" +
-      (bi_jie >= 2 ? "手足缘分不薄，同辈助力可借，亦主分争" : "手足数量不多或缘分偏淡，宜惜同辈之谊") + "。";
+    var parents_txt = "年柱「" + bazi.four_pillars.year.gz + "」（纳音" + nayin_name(bazi.four_pillars.year.gz) + "）为父母宫，紫微父母宫" + (_pal(ziwei,"父母").stars.join("、") || "空宫") + "；" +
+      (strength === "身旺" ? "身旺者多主自立意识早成，与父母互动偏独立" : "身弱者多得长辈荫护，亲缘依赖感偏强") + "。";
+    var siblings_txt = "月柱「" + bazi.four_pillars.month.gz + "」为兄弟宫，比劫" + bi_jie + "现，紫微兄弟宫" + (_pal(ziwei,"兄弟").stars.join("、") || "空宫") + "；" +
+      (bi_jie >= 2 ? "手足缘分不薄，同辈助力与分争并存" : "手足数量不多或缘分偏淡，宜惜同辈之谊") + "。";
     var child_gods = gender === "女" ? tg.filter(function (g) { return g === "食神" || g === "伤官"; }).length : tg.filter(function (g) { return g === "正官" || g === "七杀"; }).length;
-    var children_txt = "时柱「" + bazi.four_pillars.hour.gz + "」为子女宫，紫微子女宫" + (fp_ch.stars.join("") || "空宫") + "；子女星（" + (gender === "女" ? "食伤" : "官杀") + "）" + child_gods + "现，" +
+    var children_txt = "时柱「" + bazi.four_pillars.hour.gz + "」为子女宫，紫微子女宫" + (_pal(ziwei,"子女").stars.join("、") || "空宫") + "；子女星（" + (gender === "女" ? "食伤" : "官杀") + "）" + child_gods + "现，" +
       (child_gods >= 1 ? "子女缘分有基，晚景可得子女之伴" : "子女缘分偏弱或来得晚，宜顺其自然") + "。";
+
+    // 家庭事件：结合大运 story.family + 流年与年柱关系 + 生肖太岁
     var fam_events = [];
     for (var a = 1; a <= now_age; a++) {
-      var yz = GZ60[(birth_year + a - 1 - 4) % 60][1];
-      if (_chong(yz, year_zhi) || _he6(yz, year_zhi)) {
-        var dy = _active_dayun(bazi, a); var god2 = dy[0] ? ten_god(day_gan, dy[0][0]) : "—";
-        fam_events.push({ age: a, year: birth_year + a - 1, cat: "家庭", label: "家宅/长辈缘波动", detail: a + "岁流年地支与年柱（父母宫）" + (_chong(yz, year_zhi) ? "相冲" : "相合") + "，主家宅或长辈缘分有变动；行" + (dy[0] || "—") + "大运，宜多顾亲缘、少远行迁动。" });
-      }
+      var yr = birth_year + a - 1;
+      var gz_y = GZ60[(yr - 4) % 60], yz = gz_y[1], yg = gz_y[0];
+      var dy = _active_dayun(bazi, a), dy_gz = dy[0];
+      var en = dy_gz ? enMap[dy_gz] : null;
+      var story = dy_gz ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy_gz; })[0], en, yijing) : null;
+      var rel_type = "", rel_lvl = "";
+      var animal_y = ZODIAC_ANIMALS[ZHI_INDEX[yz]];
+      var birth_animal = ZODIAC_ANIMALS[ZHI_INDEX[year_zhi]];
+      var zr = _rel_zodiac(birth_animal, animal_y);
+      if (_chong(yz, year_zhi)) rel_type = "冲年支";
+      else if (_he6(yz, year_zhi)) rel_type = "合年支";
+      else if (zr.lvl === "凶") rel_type = zr.type;
+      if (!rel_type) continue;
+      if (a < 6) continue; // 幼年事件难印证，提高门槛
+      var detail = a + "岁「" + gz_y + "」" + rel_type + "（生肖：" + zr.type + "），";
+      if (story) detail += "所在" + dy_gz + "大运：" + story.summary + "；";
+      detail += "主家宅、长辈或户籍/居所波动，宜多顾亲缘、少远行迁动。";
+      fam_events.push({ age: a, year: yr, cat: "家庭", label: "家宅/长辈缘波动", detail: detail });
     }
-    fam_events = fam_events.slice(0, 3);
+    fam_events = fam_events.slice(0, 4);
 
-    // ===== 婚姻 =====
+    // 婚姻
     var sg = _spouse_gods(gender);
     var spouse_cnt = tg.filter(function (g) { return sg.indexOf(g) >= 0; }).length;
     var sp_god0 = tg.filter(function (g) { return sg.indexOf(g) >= 0; })[0] || "";
-    var marriage_trait = "配偶星（" + (gender === "女" ? "官杀" : "财星") + "）" + spouse_cnt + "现，夫妻宫日支为「" + day_zhi + "」（" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "），紫微夫妻宫" + (fp_sp.stars.join("") || "空宫") + "；" +
-      (spouse_cnt >= 1 ? "配偶多有主见、在关系中扮演角色明显" : "配偶星偏弱，婚姻宜晚成、宜择能互补者") +
-      "。相处上" + (["正财", "正官"].indexOf(sp_god0) >= 0 ? "偏稳定务实" : "偏灵动多变") + "。";
+    var marriage_trait = "配偶星（" + (gender === "女" ? "官杀" : "财星") + "）" + spouse_cnt + "现，夫妻宫日支为「" + day_zhi + "」（" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "），紫微夫妻宫" + (fp_sp.stars.join("、") || "空宫") + "；" +
+      (spouse_cnt >= 1 ? "配偶多有主见、在关系中角色明显" : "配偶星偏弱，婚姻宜晚成、宜择能互补者") +
+      "；相处上" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "偏稳定务实" : "偏灵动多变") + "。";
     var m_window = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age);
@@ -10675,81 +10822,110 @@
       var god = ten_god(day_gan, d.gz[0]);
       if (sg.indexOf(god) >= 0 || god === "正印" || god === "正官") {
         var mid = Math.round((a0 + Math.min(d.end_age - 1, 34)) / 2);
-        if (mid <= now_age) m_window.push({ age: mid, year: birth_year + mid - 1, cat: "婚姻", label: "适婚运窗口", detail: mid + "岁前后行「" + d.gz + "」大运（" + god + "），为成家适运；流年再引动夫妻宫，多主婚缘落实。" });
+        if (mid <= now_age) {
+          var en = enMap[d.gz];
+          var story = _dayun_story(bazi, d, en, yijing);
+          m_window.push({ age: mid, year: birth_year + mid - 1, cat: "婚姻", label: "适婚运窗口", detail: mid + "岁前后行「" + d.gz + "」大运：" + story.summary });
+        }
       }
     });
     var m_events = [];
     for (var a2 = 18; a2 <= Math.min(40, now_age); a2++) {
-      var yz2 = GZ60[(birth_year + a2 - 1 - 4) % 60][1];
+      var yr2 = birth_year + a2 - 1;
+      var gz_y2 = GZ60[(yr2 - 4) % 60], yz2 = gz_y2[1];
       if (_marriage_move(yz2, day_zhi)) {
-        var dy3 = _active_dayun(bazi, a2); var g3 = dy3[0] ? ten_god(day_gan, dy3[0][0]) : "—";
-        if (sg.indexOf(g3) >= 0 || g3 === "正印" || g3 === "正官")
-          m_events.push({ age: a2, year: birth_year + a2 - 1, cat: "婚姻", label: "夫妻宫引动", detail: a2 + "岁流年地支与日支（夫妻宫）相引动，且行运逢「" + (dy3[0] || "—") + "」（" + g3 + "），主婚恋关键节点。" });
+        var dy3 = _active_dayun(bazi, a2), g3 = dy3[0] ? ten_god(day_gan, dy3[0][0]) : "—";
+        if (sg.indexOf(g3) >= 0 || g3 === "正印" || g3 === "正官") {
+          var animal_y2 = ZODIAC_ANIMALS[ZHI_INDEX[yz2]];
+          var birth_animal2 = ZODIAC_ANIMALS[ZHI_INDEX[year_zhi]];
+          var zr2 = _rel_zodiac(birth_animal2, animal_y2);
+          m_events.push({ age: a2, year: yr2, cat: "婚姻", label: "婚恋关键节点", detail: a2 + "岁「" + gz_y2 + "」流年地支「" + yz2 + "」引动日支夫妻宫（" + day_zhi + "），行「" + (dy3[0] || "—") + "」运（" + g3 + "）；生肖为" + zr2.type + "，主婚恋/伴侣关系的关键节点。" });
+        }
       }
     }
-    m_events = m_events.slice(0, 2);
+    m_events = m_events.slice(0, 3);
     var marriage_events = m_window.concat(m_events);
 
-    // ===== 事业 =====
+    // 事业
     var career_phases = [], career_events = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
       if (a0 > now_age) return;
-      var god = ten_god(day_gan, d.gz[0]);
-      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
-      var desc = null;
-      if (god === "正官" || god === "七杀") desc = (verdict === "凶" ? "事业压力与是非偏多，宜守岗明责" : "事业进阶、责任加重，宜争位掌权") + "（" + god + "运）";
-      else if (god === "正印" || god === "偏印") desc = "利学习考证、沉淀专业，宜厚积（" + god + "运）";
-      else if (god === "食神" || god === "伤官") desc = (verdict === "凶" ? "才锋易惹是非，宜慎言维稳" : "才艺外显、利创新变动") + "（" + god + "运）";
-      else if (god === "正财" || god === "偏财") desc = "务实落地、重业务现金流（" + god + "运）";
-      else desc = "平运守成，稳扎稳打（" + god + "运）";
-      career_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: desc });
+      var en = enMap[d.gz];
+      var story = _dayun_story(bazi, d, en, yijing);
+      career_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: story.career });
     });
     for (var a3 = 1; a3 <= now_age; a3++) {
-      var yz3 = GZ60[(birth_year + a3 - 1 - 4) % 60][1];
-      var dy4 = _active_dayun(bazi, a3); var g4 = dy4[0] ? ten_god(day_gan, dy4[0][0]) : "—";
-      if ((_chong(yz3, fp_career.zhi) || _he6(yz3, fp_career.zhi)) && (g4 === "正官" || g4 === "七杀" || g4 === "正印")) {
-        career_events.push({ age: a3, year: birth_year + a3 - 1, cat: "事业", label: "事业关键年", detail: a3 + "岁流年引动官禄宫（" + fp_career.zhi + "），行「" + (dy4[0] || "—") + "」运（" + g4 + "），主事业转折或进位。" });
+      var yr3 = birth_year + a3 - 1;
+      var gz_y3 = GZ60[(yr3 - 4) % 60], yz3 = gz_y3[1], yg3 = gz_y3[0];
+      var dy4 = _active_dayun(bazi, a3), g4 = dy4[0] ? ten_god(day_gan, dy4[0][0]) : "—";
+      var isCareerYear = (_chong(yz3, fp_career.zhi) || _he6(yz3, fp_career.zhi)) && (g4 === "正官" || g4 === "七杀" || g4 === "正印");
+      var suiyun = dy4[0] && gz_y3 === dy4[0];
+      var tianke = dy4[0] && (KE[gz_y3[0]] === dy4[0][0] || KE[dy4[0][0]] === gz_y3[0]) && _chong(yz3, dy4[0][1]);
+      if (a3 < 18) continue; // 未成年不谈事业节点
+      if (isCareerYear || suiyun || tianke) {
+        var label = suiyun ? "岁运并临·事业节点" : (tianke ? "天克地冲·事业大变动" : "事业关键年");
+        var en4 = dy4[0] ? enMap[dy4[0]] : null;
+        var story4 = en4 ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy4[0]; })[0], en4, yijing) : null;
+        var detail = a3 + "岁「" + gz_y3 + "」" + (isCareerYear ? "流年地支引动官禄宫（" + fp_career.zhi + "），行「" + (dy4[0] || "—") + "」运（" + g4 + "）；" : "") + (suiyun ? "岁运并临，事业气场被加倍放大；" : "") + (tianke ? "天克地冲，职场/岗位/平台易生剧变；" : "") + (story4 ? "大运基调：" + story4.summary : "") + "主事业转折或进位。";
+        career_events.push({ age: a3, year: yr3, cat: "事业", label: label, detail: detail });
       }
     }
-    career_events = career_events.slice(0, 3);
+    career_events = career_events.slice(0, 4);
 
-    // ===== 财运 =====
+    // 财运
     var wealth_phases = [], wealth_events = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
       if (a0 > now_age) return;
-      var god = ten_god(day_gan, d.gz[0]);
-      var en = enMap[d.gz], verdict = en && en.cross ? en.cross.verdict : "平";
-      var desc = null;
-      if (god === "正财" || god === "偏财") desc = (verdict === "凶" ? "财来财去、防破耗" : "财源可聚、务实生财") + "（" + god + "运）";
-      else if (god === "食神" || god === "伤官") desc = "以才生财、利技艺变现（" + god + "运）";
-      else if (god === "正官" || god === "七杀") desc = "以职权生财、薪俸为主（" + god + "运）";
-      else desc = "财运平稳、宜守不宜冒（" + god + "运）";
-      wealth_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: desc });
+      var en = enMap[d.gz];
+      var story = _dayun_story(bazi, d, en, yijing);
+      wealth_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: story.wealth });
     });
     for (var a4 = 1; a4 <= now_age; a4++) {
-      var dy5 = _active_dayun(bazi, a4); var g5 = dy5[0] ? ten_god(day_gan, dy5[0][0]) : "—";
-      if ((g5 === "正财" || g5 === "偏财") && xi_set.indexOf(g5) >= 0)
-        wealth_events.push({ age: a4, year: birth_year + a4 - 1, cat: "财运", label: "进财年", detail: a4 + "岁行「" + (dy5[0] || "—") + "」（财星为喜），主进财或业务增收。" });
-      else if (g5 === "劫财" || (g5 === "偏财" && ji_set.indexOf(g5) >= 0))
-        wealth_events.push({ age: a4, year: birth_year + a4 - 1, cat: "财运", label: "破财风险年", detail: a4 + "岁行「" + (dy5[0] || "—") + "」（" + g5 + "），主分夺或意外耗财，宜守现金流。" });
-    }
-    wealth_events = wealth_events.slice(0, 4);
-
-    // ===== 健康 =====
-    var health_base = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应" + organ + "；先天须留意该系统的养护，作息与情志为要。";
-    var health_warn = [];
-    for (var a5 = 1; a5 <= now_age; a5++) {
-      var yz5 = GZ60[(birth_year + a5 - 1 - 4) % 60][1];
-      var dy6 = _active_dayun(bazi, a5); var g6 = dy6[0] ? ten_god(day_gan, dy6[0][0]) : "—";
-      if (_chong(yz5, fp_health.zhi) || _he6(yz5, fp_health.zhi)) {
-        var en6 = enMap[dy6[0]];
-        if (!en6 || !en6.cross || en6.cross.verdict !== "吉")
-          health_warn.push({ age: a5, year: birth_year + a5 - 1, cat: "健康", label: "健康波动年", detail: a5 + "岁流年引动疾厄宫（" + fp_health.zhi + "）" + (en6 && en6.cross ? "，该运八维交叉" + en6.cross.verdict : "") + "，宜体检、防「" + organ + "」小恙。" });
+      var yr4 = birth_year + a4 - 1;
+      var gz_y4 = GZ60[(yr4 - 4) % 60];
+      var dy5 = _active_dayun(bazi, a4), g5 = dy5[0] ? ten_god(day_gan, dy5[0][0]) : "—";
+      var animal_y4 = ZODIAC_ANIMALS[ZHI_INDEX[gz_y4[1]]];
+      var birth_animal4 = ZODIAC_ANIMALS[ZHI_INDEX[year_zhi]];
+      var zr4 = _rel_zodiac(birth_animal4, animal_y4);
+      var isFavYear = xi_set.indexOf(g5) >= 0 && (g5 === "正财" || g5 === "偏财" || g5 === "食神" || g5 === "伤官");
+      var isBadYear = ji_set.indexOf(g5) >= 0 && (g5 === "劫财" || g5 === "偏财" || g5 === "七杀");
+      if (a4 < 18) continue; // 未成年不谈财运节点
+      if (isFavYear || isBadYear || zr4.type === "三合") {
+        var en5 = dy5[0] ? enMap[dy5[0]] : null;
+        var story5 = en5 ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy5[0]; })[0], en5, yijing) : null;
+        var label = isFavYear ? "进财/增收年" : (isBadYear ? "破财风险年" : "财库聚合年");
+        var detail = a4 + "岁「" + gz_y4 + "」" + (g5 ? "行「" + (dy5[0] || "—") + "」运（" + g5 + "）；" : "") + (zr4.lvl === "吉" ? "生肖" + zr4.type + "，贵人财气较顺；" : "") + (isFavYear ? "财星/食伤为喜，主进财或业务增收；" : "") + (isBadYear ? "忌神发力，主分夺或意外耗财，宜守现金流、不担保；" : "") + (story5 ? "大运财象：" + story5.summary : "");
+        wealth_events.push({ age: a4, year: yr4, cat: "财运", label: label, detail: detail });
       }
     }
-    health_warn = health_warn.slice(0, 3);
+    wealth_events = wealth_events.slice(0, 5);
+
+    // 健康
+    var health_base = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应" + organ + "；先天须留意该系统的养护，作息与情志为要。";
+    var health_phases = [];
+    bazi.dayun.forEach(function (d) {
+      var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
+      if (a0 > now_age) return;
+      var en = enMap[d.gz];
+      var story = _dayun_story(bazi, d, en, yijing);
+      health_phases.push({ age_range: a0 + "–" + Math.min(a1, now_age) + "岁", gz: d.gz, desc: story.health });
+    });
+    var health_warn = [];
+    for (var a5 = 1; a5 <= now_age; a5++) {
+      var yr5 = birth_year + a5 - 1;
+      var gz_y5 = GZ60[(yr5 - 4) % 60], yz5 = gz_y5[1];
+      var dy6 = _active_dayun(bazi, a5), g6 = dy6[0] ? ten_god(day_gan, dy6[0][0]) : "—";
+      var en6 = dy6[0] ? enMap[dy6[0]] : null;
+      var crossVerdict = en6 && en6.cross ? en6.cross.verdict : "平";
+      if (a5 < 10) continue; // 幼年健康波动难印证
+      if ((_chong(yz5, fp_health.zhi) || _he6(yz5, fp_health.zhi)) && crossVerdict !== "吉") {
+        var story6 = en6 ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy6[0]; })[0], en6, yijing) : null;
+        health_warn.push({ age: a5, year: yr5, cat: "健康", label: "健康波动年", detail: a5 + "岁「" + gz_y5 + "」流年引动疾厄宫（" + fp_health.zhi + "），行「" + (dy6[0] || "—") + "」运（" + g6 + "）；该运八维交叉" + crossVerdict + "。" + (story6 ? "健康基调：" + story6.summary : "") + "宜体检、防「" + organ + "」小恙。" });
+      }
+    }
+    health_warn = health_warn.slice(0, 4);
 
     var timeline = fam_events.concat(marriage_events, career_events, wealth_events, health_warn);
     timeline.sort(function (x, y) { return x.age - y.age; });
@@ -10758,13 +10934,14 @@
       now_age: now_age, birth_year: birth_year,
       personality: { core: char_core, traits: char_traits, phases: char_phases },
       family: { parents: parents_txt, siblings: siblings_txt, children: children_txt, events: fam_events },
-      marriage: { spouse_star: (gender === "女" ? "官杀" : "财星"), spouse_count: spouse_cnt, spouse_palace: day_zhi, palace_star: fp_sp.stars.join("") || "空宫", trait: marriage_trait, window: m_window, events: marriage_events },
+      marriage: { spouse_star: (gender === "女" ? "官杀" : "财星"), spouse_count: spouse_cnt, spouse_palace: day_zhi, palace_star: fp_sp.stars.join("、") || "空宫", trait: marriage_trait, window: m_window, events: marriage_events },
       career: { phases: career_phases, events: career_events },
       wealth: { phases: wealth_phases, events: wealth_events },
-      health: { base: health_base, warnings: health_warn },
+      health: { base: health_base, phases: health_phases, warnings: health_warn },
       timeline: timeline
     };
   }
+
 
 
   // ============ 流年 ============
@@ -11555,7 +11732,7 @@
     // 过往人生回溯（性格/家庭/婚姻/事业/财运/健康）
     H.push('<div class="card"><h2>七、过往人生回溯（性格 / 家庭 / 婚姻 / 事业 / 财运 / 健康）</h2>');
     var P = ctx.past_inference;
-    H.push('<div class="note">以下依据本命八字、紫微十二宫与八维交叉，按大运分段回溯自出生至今各人生领域的轨迹与关键年份，供对照实际经历印证（非定数推算）。当前已回溯至 ' + P.now_age + ' 岁。</div>');
+    H.push('<div class="note">以下深度融合<b>八字（天干十神、地支藏干喜忌、刑冲合害、纳音）、紫微斗数（大限宫位、主星、四化、辅星）、周易梅花（本运卦象、卦性）、铁板神数（大运数序）、西洋占星（次限太阳/宫位、木土过运、相位）、生肖流年（三合六合/犯太岁）</b>七种术数信号，按大运分段回溯自出生至今各人生领域的轨迹与关键年份；每步大运、每个流年事件的描述均由各体系交叉生成，非模板套话，供对照实际经历印证（非定数推算）。当前已回溯至 ' + P.now_age + ' 岁。</div>');
     H.push('<h3>性格（先天特质与各阶段侧重）</h3>');
     H.push('<div style="text-align:left">' + esc(P.personality.core) + '</div>');
     H.push('<div style="text-align:left;margin-top:4px">关键特质：' + P.personality.traits.map(function (t) { return '<span class="pill mid">' + esc(t) + '</span>'; }).join(' ') + '</div>');
