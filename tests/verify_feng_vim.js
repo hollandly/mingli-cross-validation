@@ -1,7 +1,7 @@
 'use strict';
 /*
  * Vimshottari 大运 + 玄空飞星·八宅命卦 集成验证
- * 目的：验证两个新维度（第十一·十二维）正确接入引擎，并在【不同人】上分化（非模板）。
+ * 目的：验证两个新维度（第十一·十二维）正确接入引擎，并在【不同人】上分化（非模板）。(系统已升十五维；本脚本聚焦 Vimshottari/玄空飞星)
  * 用法：node tests/verify_feng_vim.js   （在仓库根目录 MingLi_System 下运行）
  * 断言：1) analyze 返回 vimshottari(9 运序列 + 当前运) 与 fengshui(命卦/四吉方/四凶方/九运)
  *       2) cross_validate 矩阵含 Vimshottari 与玄空飞星两体系（共 10 体系，无面相/手相时）
