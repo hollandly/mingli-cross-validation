@@ -1,6 +1,6 @@
 'use strict';
 /*
- * 十五维升级 · 人类图/西洋行进/奇门遁甲 集成测试
+ * 十三→十七维集成测试（人类图/西洋行进/奇门遁甲/六壬/塔罗）
  * 用法：node tests/verify_hd_transit_qimen.js   （仓库根 MingLi_System 下运行）
  */
 const fs = require('fs'), vm = require('vm'), path = require('path');
