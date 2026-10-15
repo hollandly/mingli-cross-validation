@@ -190,6 +190,35 @@
   .ov-tip b{color:#9a6b00;}
   .section{margin-top:16px;}
   .section-h{font-size:14px;font-weight:600;color:var(--gold);border-bottom:2px solid var(--line);padding-bottom:5px;margin:0 0 8px;}
+  /* 文本块防长串/外文术语溢出（连续干支、英文等不产生横向滚动） */
+  .plain,.dim-tip,.ov-tip,.note,.tips li,.kv .v,.flag{overflow-wrap:anywhere;word-break:break-word;}
+  /* 手机端（≤480px）细调：避免横向溢出、提升可读性与触控 */
+  @media(max-width:480px){
+    .wrap{padding:12px 9px 52px;}
+    .brand svg{width:56px;height:56px;}
+    header.top h1{font-size:19px;letter-spacing:3px;}
+    header.top .sub{font-size:11.5px;}
+    .disclaimer{font-size:11.5px;padding:7px 11px;}
+    .card{padding:13px 13px;margin:12px 0;border-radius:12px;}
+    .card h2{font-size:16px;letter-spacing:.5px;}
+    .card h3{font-size:14px;}
+    .ov-card{padding:11px 12px;}
+    .ov-card h3{font-size:14px;}
+    .ov-tip,.dim-tip,.plain{padding:10px 12px;font-size:12.5px;line-height:1.8;}
+    .section-h{font-size:13.5px;}
+    .pillar{font-size:15px;letter-spacing:1px;}
+    .pillar small{font-size:11px;}
+    .tablescroll{margin:6px 0;}
+    table{font-size:11.5px;}
+    th,td{padding:5px 5px;}
+    .kv{font-size:12px;gap:6px 12px;}
+    .form-grid{gap:10px;}
+    .field select,.field input{padding:11px;font-size:16px;}
+    .btn{padding:13px;font-size:16px;}
+    .tl-chip{min-width:52px;font-size:12px;}
+    .act-list li{font-size:13px;padding:7px 12px 7px 32px;}
+    .two{gap:10px;}
+  }
 </style>
 </head>
 <body>
@@ -10614,11 +10643,11 @@
     matrix.forEach(function (m) {
       var dir = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
       dim_tips[m.dimension] = DIM_ADVICE[m.dimension] ? DIM_ADVICE[m.dimension](dir) : "参考综合评级顺势而为。";
-      if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：" + (nSys || 4) + "体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
+      if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：多体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
       if (m.consistency === "分歧" || m.mean_level < 3) cautions.push(m.dimension + "：结论分歧或评级偏弱，是容易踩坑的方面——重大决策放慢、以现实反馈校准，别凭感觉冲");
     });
-    if (!strengths.length) strengths.push((nSys || 4) + "体系整体以「平」为主，没有特别突出的长板，宜在均衡中稳步积累，不必急于求成");
-    if (!cautions.length) cautions.push("暂无明显短板预警，但「平」也意味着没有躺赢的运气，保持节奏、居安思危即可");
+    if (!strengths.length) strengths.push("整体均衡：各维度评级以「平」为主，没有特别突出的长板，宜稳步积累、不必急于求成");
+    if (!cautions.length) cautions.push("无明显短板：整体偏稳，但「平」也意味着没有躺赢的运气，保持节奏、居安思危即可");
     var phase = [];
     if (bazi.dayun.length) {
       if (bazi.dayun[0].start_age > 0) {
@@ -10634,15 +10663,25 @@
         phase.push({ range: Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + "岁", gz: d.gz, tip: tip, plain: plain });
       });
     }
-    var overall = "综合" + (nSys || 4) + "体系交叉验证：高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] +
+    var overall = "综合多体系交叉验证：高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] +
       " 项。可以重点发力的领域：「" + strengths.join("；") + "」；需要设防、别踩坑的方面：「" + cautions.join("；") + "」。" +
       "人生策略上，你身" + bazi.strength + "，用神宜取" + (bazi.strength === "身弱" ? "印比（学习、合作、稳健托底）" : "食伤财官（表达、务实、进取兑现）") +
       "——喜运的十年主动出击、放大成果，忌运的十年收着点、先把风险敞口降下来。";
     if (review_flags.length) overall += " 另：" + review_flags.join("");
     function _shortDim(t) { var i = t.indexOf("："); return i >= 0 ? t.slice(0, i) : t; }
-    var strengthPlain = strengths.length ? strengths.slice(0, 2).map(_shortDim).join("、") : "没有明显突出长板，整体偏均衡、宜稳步积累";
-    var cautionPlain = cautions.length ? cautions.slice(0, 2).map(_shortDim).join("、") : "没有明显特别弱的方面，居安思危即可";
-    var overall_plain = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；但【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍。整体你身「" + bazi.strength + "」，走『喜用』的十年就大胆冲，走『忌』的十年就收着点。";
+    var strengthPlain = strengths.length ? strengths.slice(0, 2).map(_shortDim).join("、") : "整体偏均衡，无明显突出长板";
+    var cautionPlain = cautions.length ? cautions.slice(0, 2).map(_shortDim).join("、") : "整体偏稳，暂无明显短板预警";
+    var _ovBody;
+    if (strengths.length && cautions.length) {
+      _ovBody = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；但【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍。";
+    } else if (strengths.length && !cautions.length) {
+      _ovBody = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；整体没有明显短板，保持节奏、居安思危即可。";
+    } else if (!strengths.length && cautions.length) {
+      _ovBody = "【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍；但整体偏均衡，稳扎稳打也能成事。";
+    } else {
+      _ovBody = "整体偏均衡，没有特别突出的长板、也没有明显短板——稳步积累、居安思危，顺势而为即可。";
+    }
+    var overall_plain = _ovBody + "整体你身「" + bazi.strength + "」，走『喜用』的十年就大胆冲，走『忌』的十年就收着点。";
     return { overall: overall, overall_plain: overall_plain, strengths: strengths, cautions: cautions, dimension_tips: dim_tips, by_phase: phase };
   }
 
@@ -10951,7 +10990,7 @@
     var review_flags = [];
     var bi_jie = bazi.ten_gods.filter(function (g) { return g === "比肩" || g === "劫财"; }).length;
     if (bi_jie >= 2 && tieban_votes["兄弟"]) review_flags.push("八字比劫偏旺而铁板兄弟数偏少，时辰或存疑，建议考时复核。");
-    if (face || palm) review_flags.push("相学（面相/手相）为辅助维度：由照片像素气色自动判定 + 您观察勾选的特征共同得出，结论须与命理" + (nSys - (face ? 1 : 0) - (palm ? 1 : 0)) + "体系互参，不单独作断。");
+    if (face || palm) review_flags.push("相学（面相/手相）为辅助维度：由照片像素气色自动判定 + 您观察勾选的特征共同得出，结论须与其余命理体系互参，不单独作断。");
     if (xiyao) review_flags.push("西洋占星为辅助维度：本命盘与行运推运依出生地经纬度推算（近似星历、整宫制），结论须与东方命理互参。");
     if (shengxiao) review_flags.push("生肖流年以出生时年柱地支定生肖、逐年与流年地支论三合/六冲/犯太岁，为民俗运势框架，须与其余体系互参。");
     if (qizheng) review_flags.push("七政四余为东方星命体系：以出生时刻日/月/五星真实黄经与南北交(罗睺/计都)节点论命，乃华夏星学瑰宝，须与其余体系互参。");
@@ -10964,7 +11003,7 @@
     if (liuren) review_flags.push("六壬神课为人事时机层：由出生时刻月将加时排天盘、四课三传论人事应期，乃三式之一、与奇门互补；本实现为简化课体，仅供参考，须与其余体系互参。");
     if (tarot) review_flags.push("塔罗大阿卡纳生命牌阵为人生课题/原型指导层：以出生精确时分确定性抽牌，提供心理原型与决策指引，属西方卡牌体系；结论为意义参考，不纳入硬命理加权，须与命理互参。");
     var conflicts = matrix.filter(function (m) { return m.consistency === "分歧"; }).map(function (m) { return m.dimension; });
-    if (conflicts.length) review_flags.push("维度「" + conflicts.join("、") + "」" + nSys + "体系结论分歧较大，建议复核。");
+    if (conflicts.length) review_flags.push("维度「" + conflicts.join("、") + "」各体系结论分歧较大，建议复核。");
     var cons_counts = { "高一致": 0, "中一致": 0, "分歧": 0 };
     matrix.forEach(function (m) { cons_counts[m.consistency]++; });
     var grade = cons_counts["分歧"] === 0 && cons_counts["高一致"] >= 4 ? "高一致 · 结论可信度较高"
