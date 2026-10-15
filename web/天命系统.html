@@ -10642,7 +10642,7 @@
     function _shortDim(t) { var i = t.indexOf("："); return i >= 0 ? t.slice(0, i) : t; }
     var strengthPlain = strengths.length ? strengths.slice(0, 2).map(_shortDim).join("、") : "没有明显突出长板，整体偏均衡、宜稳步积累";
     var cautionPlain = cautions.length ? cautions.slice(0, 2).map(_shortDim).join("、") : "没有明显特别弱的方面，居安思危即可";
-    var overall_plain = "一句话看懂你的人生格局：你在【" + strengthPlain + "】上比较有底气，可以放心投入；但【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍。整体你身「" + bazi.strength + "」，走『喜用』的十年就大胆冲，走『忌』的十年就收着点。";
+    var overall_plain = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；但【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍。整体你身「" + bazi.strength + "」，走『喜用』的十年就大胆冲，走『忌』的十年就收着点。";
     return { overall: overall, overall_plain: overall_plain, strengths: strengths, cautions: cautions, dimension_tips: dim_tips, by_phase: phase };
   }
 
@@ -11329,7 +11329,7 @@
     var char_core = "日主" + de + "（" + day_gan + "）" + strength + "，十神以「" + (key_gods.slice(0, 3).join("、") || "中和") + "」为显，先天性格" +
       (strength === "身旺" ? "偏主动外放，自主性强但易固执" : strength === "身弱" ? "偏内敛依赖，善借力但易犹豫" : "中和，能屈能伸、随势调柔") +
       "；紫微命宫主星「" + (ziwei.main_star || "—") + "」赋予底色。";
-    var char_core_plain = "翻译成大白话：你天生是【" + (strength === "身旺" ? "很有主见、主动、但容易一根筋" : strength === "身弱" ? "更依赖环境、善借力、但也容易犹豫" : "灵活、好相处、能屈能伸") + "】的人。你身上最明显的特质是【" + (char_traits.join("、") || "性情中和") + "】——这基本是你性格的底色。紫微说的『命宫主星" + (ziwei.main_star || "—") + "』，只是从另一个角度印证了这点。";
+    var char_core_plain = "你天生是【" + (strength === "身旺" ? "很有主见、主动、但容易一根筋" : strength === "身弱" ? "更依赖环境、善借力、但也容易犹豫" : "灵活、好相处、能屈能伸") + "】的人。你身上最明显的特质是【" + (char_traits.join("、") || "性情中和") + "】——这基本是你性格的底色。紫微说的『命宫主星" + (ziwei.main_star || "—") + "』，只是从另一个角度印证了这点。";
 
     // 性格阶段：用 _dayun_story
     var char_phases = [];
@@ -11385,7 +11385,7 @@
     var marriage_trait = "配偶星（" + (gender === "女" ? "官杀" : "财星") + "）" + spouse_cnt + "现，夫妻宫日支为「" + day_zhi + "」（" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "），紫微夫妻宫" + (fp_sp.stars.join("、") || "空宫") + "；" +
       (spouse_cnt >= 1 ? "配偶多有主见、在关系中角色明显" : "配偶星偏弱，婚姻宜晚成、宜择能互补者") +
       "；相处上" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "偏稳定务实" : "偏灵动多变") + "。";
-    var marriage_trait_plain = "说人话：你吸引的伴侣类型，看『配偶星』——你命里【" + (spouse_cnt >= 1 ? "伴侣多半挺有主见、在关系里存在感强" : "伴侣缘分偏弱，更适合晚婚、找能互补的人") + "】。你俩的相处风格偏【" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "稳定踏实" : "灵动多变") + "】。紫微夫妻宫『" + (fp_sp.stars.join("、") || "空宫") + "』也印证了这点。";
+    var marriage_trait_plain = "你吸引的伴侣类型，看『配偶星』——你命里【" + (spouse_cnt >= 1 ? "伴侣多半挺有主见、在关系里存在感强" : "伴侣缘分偏弱，更适合晚婚、找能互补的人") + "】。你俩的相处风格偏【" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "稳定踏实" : "灵动多变") + "】。紫微夫妻宫『" + (fp_sp.stars.join("、") || "空宫") + "』也印证了这点。";
     var m_window = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age);
@@ -11475,7 +11475,7 @@
 
     // 健康
     var health_base = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应" + organ + "；先天须留意该系统的养护，作息与情志为要。";
-    var health_base_plain = "大白话：你命里「" + weak_elem + "」这个五行偏弱，对应身体里的「" + organ + "」。不代表一定生病，而是这一块要更早养护——别熬夜透支、定期体检，把它当资产管。";
+    var health_base_plain = "你命里「" + weak_elem + "」这个五行偏弱，对应身体里的「" + organ + "」。不代表一定生病，而是这一块要更早养护——别熬夜透支、定期体检，把它当资产管。";
     var health_phases = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
