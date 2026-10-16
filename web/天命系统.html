@@ -89,7 +89,17 @@
   .calhint{font-size:12px;color:var(--muted);margin-top:6px;display:block;line-height:1.6;}
   .leapbox{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding-top:6px;}
   .leapbox input{width:auto;transform:scale(1.15);}
-  .tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0;}
+  .tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0;scrollbar-width:thin;}
+  /* 总览两表在手机上由「横向滚动表」改为「卡片堆叠」，更易读、无需左右滑动 */
+  @media(max-width:600px){
+    table.rt,table.rt tbody,table.rt tr,table.rt td{display:block;width:100%;box-sizing:border-box;}
+    table.rt thead{display:none;}
+    table.rt tr{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:7px 12px;background:var(--paper2);box-shadow:0 1px 4px rgba(120,90,30,.05);}
+    table.rt td{border:none;padding:5px 0;text-align:left !important;display:flex;gap:10px;align-items:baseline;}
+    table.rt td::before{content:attr(data-label);font-weight:600;color:var(--muted);flex:0 0 auto;min-width:58px;}
+    table.rt td>*{flex:1;}
+    table.rt td[data-label="建议"],table.rt td[data-label="大白话"]{line-height:1.7;}
+  }
   .btn.sm{padding:5px 12px;font-size:12px;margin:0;letter-spacing:0;}
   .saved-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);}
   .tips{margin:6px 0;padding-left:20px;font-size:13px;line-height:1.85;}
@@ -10640,11 +10650,20 @@
       "健康": function (dir) { return dir === "吉/强" ? "先天体质尚可。保持起居有常、定期体检即可，别仗着底子好透支。" : dir === "平" ? "规律作息、适度锻炼，盯紧薄弱环节，小毛病别拖。" : "健康提示偏多。定期体检、早养薄弱环节、绝不透支，把身体当资产管。"; },
       "时机运势": function (dir) { return dir === "吉/强" ? "近年窗口偏吉。把握节奏主动作为，但也别在顺境里放松风控。" : dir === "平" ? "顺势而为、择机而动，不强行，重大变动先备预案。" : "时机偏守。蓄势待时、以静制动，重大决策暂缓，先把风险敞口降下来。"; }
     };
+    var DIM_CAUTION = {
+      "性格": "自我认知或性格局限有分歧——重大决策前多听可信反馈、别在情绪头上下判断",
+      "事业": "事业有承压或信号分歧——先稳住现有摊子、别单兵冒进，也别频繁跳槽越动越乱",
+      "财运": "财运偏弱或信号分歧——以守成为主、不新增杠杆、不替人担保背债",
+      "婚姻": "婚缘有波折之象——多沟通、慢决定，重大承诺前把期待与边界谈清",
+      "家庭(六亲)": "亲缘或有疏离/牵挂——主动维系、尽早尽心力，别等事了才补",
+      "健康": "健康提示偏多——定期体检、早养薄弱环节、绝不透支，把身体当资产管",
+      "时机运势": "时机偏守——蓄势待时、重大决策暂缓，先把风险敞口降下来"
+    };
     matrix.forEach(function (m) {
       var dir = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
       dim_tips[m.dimension] = DIM_ADVICE[m.dimension] ? DIM_ADVICE[m.dimension](dir) : "参考综合评级顺势而为。";
       if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：多体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
-      if (m.consistency === "分歧" || m.mean_level < 3) cautions.push(m.dimension + "：结论分歧或评级偏弱，是容易踩坑的方面——重大决策放慢、以现实反馈校准，别凭感觉冲");
+      if (m.consistency === "分歧" || m.mean_level < 3) cautions.push(m.dimension + "：" + (DIM_CAUTION[m.dimension] || "结论分歧或评级偏弱，是容易踩坑的方面——重大决策放慢、以现实反馈校准"));
     });
     if (!strengths.length) strengths.push("整体均衡：各维度评级以「平」为主，没有特别突出的长板，宜稳步积累、不必急于求成");
     if (!cautions.length) cautions.push("无明显短板：整体偏稳，但「平」也意味着没有躺赢的运气，保持节奏、居安思危即可");
@@ -12755,16 +12774,16 @@
     H.push('</ul></div>');
     H.push('</div>');
     // 分维度人生建议
-    H.push('<div class="section"><div class="section-h">分维度人生建议</div><table><tr><th>维度</th><th>综合评级</th><th>指导建议</th></tr>');
+    H.push('<div class="section"><div class="section-h">分维度人生建议</div><table class="rt"><tr><th>维度</th><th>综合评级</th><th>指导建议</th></tr>');
     cv.conclusions.forEach(function (c) {
       var dirCls = c.direction === "吉/强" ? "hi" : (c.direction === "平" ? "mid" : "lo");
-      H.push('<tr><td><b>' + esc(c.dimension) + '</b></td><td><span class="pill ' + dirCls + '">' + esc(c.direction) + '</span></td><td style="text-align:left">' + esc(c.advice) + '</td></tr>');
+      H.push('<tr><td data-label="维度"><b>' + esc(c.dimension) + '</b></td><td data-label="评级"><span class="pill ' + dirCls + '">' + esc(c.direction) + '</span></td><td data-label="建议" style="text-align:left">' + esc(c.advice) + '</td></tr>');
     });
     H.push('</table></div>');
     // 大运阶段策略（含大白话）
-    H.push('<div class="section"><div class="section-h">大运阶段策略（通俗版）</div><table><tr><th>年龄段</th><th>大运</th><th>阶段建议（术语）</th><th>大白话</th></tr>');
+    H.push('<div class="section"><div class="section-h">大运阶段策略（通俗版）</div><table class="rt"><tr><th>年龄段</th><th>大运</th><th>阶段建议（术语）</th><th>大白话</th></tr>');
     lg.by_phase.forEach(function (p) {
-      H.push('<tr><td>' + esc(p.range) + '</td><td class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td style="text-align:left">' + esc(p.tip) + '</td><td style="text-align:left;color:#5a4a30">' + esc(p.plain) + '</td></tr>');
+      H.push('<tr><td data-label="年龄段">' + esc(p.range) + '</td><td data-label="大运" class="pillar" style="font-size:15px">' + gz(p.gz) + '</td><td data-label="阶段建议" style="text-align:left">' + esc(p.tip) + '</td><td data-label="大白话" style="text-align:left;color:#5a4a30">' + esc(p.plain) + '</td></tr>');
     });
     H.push('</table></div>');
     // 大运阶段详批
