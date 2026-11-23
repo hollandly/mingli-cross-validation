@@ -9871,9 +9871,48 @@
   function _city_lat(city){ return CITY_LATITUDE[city] != null ? CITY_LATITUDE[city] : 30.0; }
   function _jd(y,m,d,hh){ if (m<=2){ y-=1; m+=12; } var A=Math.floor(y/100), B=2-A+Math.floor(A/4); if (y<1582) B=0; return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5+hh/24; }
   function _sun_lon(jd){ var n=jd-2451545.0; var L=280.460+0.9856474*n; var g=357.528+0.9856003*n; var gl=g*Math.PI/180; var lam=L+1.915*Math.sin(gl)+0.020*Math.sin(2*gl); return ((lam%360)+360)%360; }
-  function _moon_lon(jd){ var n=jd-2451545.0; var Lm=218.316+13.176396*n; var Mm=134.963+13.064993*n; var Fm=93.272+13.229350*n; var lam=Lm+6.289*Math.sin(Mm*Math.PI/180)+0.214*Math.sin(2*Fm*Math.PI/180); return ((lam%360)+360)%360; }
-  var PLANET_REF = [["水",252.250,4.092617],["金",181.979,1.602136],["火",355.433,0.524021],["木",34.396,0.083085],["土",49.954,0.033431],["天",313.238,0.011620],["海",304.880,0.005989],["冥",238.929,0.003976]];
-  function _planet_lon(jd,name){ for (var i=0;i<PLANET_REF.length;i++){ if (PLANET_REF[i][0]===name){ var n=jd-2451545.0; return ((PLANET_REF[i][1]+PLANET_REF[i][2]*n)%360+360)%360; } } return 0; }
+  // 月球黄经：补上出差(Evection)、二均差(Variation)等主项，误差从 ±2° 降到约 ±0.3°。
+  // Vimshottari 每宿仅 13.33°，月亮精度直接决定「大运起始星」是否算对。
+  function _moon_lon(jd){
+    var d=jd-2451545.0, r=Math.PI/180;
+    var Lm=218.316+13.176396*d, Mm=134.963+13.064993*d, F=93.272+13.229350*d;
+    var D=297.850+12.190749*d, Ms=357.529+0.98560028*d;
+    var lam=Lm + 6.289*Math.sin(Mm*r) + 1.274*Math.sin((2*D-Mm)*r)
+          + 0.658*Math.sin(2*D*r) + 0.214*Math.sin(2*F*r)
+          + 0.11*Math.sin((2*D-Ms-Mm)*r) - 0.186*Math.sin(Ms*r);
+    return ((lam%360)+360)%360;
+  }
+  // 行星轨道根数（J2000 历元 + 日变率）：N 升交点 / i 倾角 / w 近日点 / a 半长轴 / e 离心率 / M 平近点角
+  // [N,dN, i,di, w,dw, a,da, e,de, M,dM]；角度为度，a 为 AU，d 为自 1999-12-31 的日数。
+  var ORB_ELEM = {
+    "水":[48.3313,3.24587e-5, 7.0047,5.00e-8, 29.1241,1.01444e-5, 0.387098,0, 0.205635,5.59e-10, 168.6562,4.0923344],
+    "金":[76.6799,2.46590e-5, 3.3946,2.75e-8, 54.8910,1.38374e-5, 0.723330,0, 0.006773,-1.302e-9, 48.0052,1.6021302],
+    "火":[49.5594,1.85061e-5, 1.8497,-1.78e-8, 286.5016,2.92961e-5, 1.523688,0, 0.093405,2.516e-9, 18.6021,0.5240207],
+    "木":[100.4542,1.17676e-5, 1.3030,-1.557e-7, 273.8777,1.64505e-5, 5.20256,0, 0.048498,4.469e-9, 19.8950,0.0830853],
+    "土":[113.6634,1.48800e-5, 2.4886,-1.081e-7, 339.3939,2.97661e-5, 9.55475,0, 0.055546,-9.499e-9, 316.9670,0.0334442],
+    "天":[74.0005,1.3978e-5, 0.7733,1.9e-8, 96.6612,3.0565e-5, 19.18171,-1.55e-8, 0.047318,7.45e-9, 142.5905,0.0117258],
+    "海":[131.7806,3.0173e-5, 1.7700,-2.55e-7, 272.8461,-6.027e-6, 30.05826,3.313e-8, 0.008606,2.15e-9, 260.2471,0.0059951],
+    "冥":[110.30347,0, 17.14175,0, 224.06892,0, 39.48168,0, 0.24880766,0, 14.53,0.0039587]
+  };
+  // 解开普勒方程求地心视黄经。替代原先「J2000 位置 + 匀速角速度×天数」的直线近似——
+  // 后者没有逆行，水/金/火误差可达数十度，会让占星、七政四余、Vimshottari、人类图全部建立在失真位置上。
+  function _planet_lon(jd,name){
+    var q=ORB_ELEM[name]; if(!q) return 0;
+    var d=jd-2451543.5, r=Math.PI/180;
+    var N=(q[0]+q[1]*d)*r, i=(q[2]+q[3]*d)*r, w=(q[4]+q[5]*d)*r;
+    var a=q[6]+q[7]*d, e=q[8]+q[9]*d, M=((q[10]+q[11]*d)%360+360)%360*r;
+    var E=M, k;
+    for(k=0;k<8;k++){ E = E - (E - e*Math.sin(E) - M)/(1 - e*Math.cos(E)); }
+    var xv=a*(Math.cos(E)-e), yv=a*Math.sqrt(1-e*e)*Math.sin(E);
+    var v=Math.atan2(yv,xv), rr=Math.sqrt(xv*xv+yv*yv);
+    var vw=v+w, cN=Math.cos(N), sN=Math.sin(N), ci=Math.cos(i), si=Math.sin(i);
+    var xh=rr*(cN*Math.cos(vw)-sN*Math.sin(vw)*ci);
+    var yh=rr*(sN*Math.cos(vw)+cN*Math.sin(vw)*ci);
+    var ls=_sun_lon(jd)*r, g=(357.529+0.98560028*d)*r;
+    var rs=1.00014-0.01671*Math.cos(g)-0.00014*Math.cos(2*g);
+    var xg=xh+rs*Math.cos(ls), yg=yh+rs*Math.sin(ls);
+    return ((Math.atan2(yg,xg)/r)%360+360)%360;
+  }
   function _lst_deg(jd,lon){ var gmst=280.46061837+360.98564736629*(jd-2451545.0); return ((gmst+lon)%360+360)%360; }
   function _obliq(jd){ var T=(jd-2451545.0)/36525; return 23.4392911-0.0130042*T; }
   function _asc_mc(jd,lon,lat){
@@ -10009,7 +10048,9 @@
   }
 
   // ============ 新增维度十：七政四余（中国星命·东方瑰宝，与西洋占星同源异流）============
-  function _mean_node(jd){ var T=(jd-2451545.0)/36525; return ((125.04452-0.0529921*T)%360+360)%360; }
+  // 平均月球升交点（北交/罗睺）。退行率 0.0529538083°/日 ≈ 19.3548°/年，
+  // 必须乘「日数」；此前误乘「世纪数 T」，导致 34 年间只移动 0.02°，南北交几乎恒定在狮子/水瓶。
+  function _mean_node(jd){ var d=jd-2451545.0; return ((125.04452-0.0529538083*d)%360+360)%360; }
   var QZ_PLANET_ELEM = { "日":"火", "月":"水", "金":"金", "木":"木", "水":"水", "火":"火", "土":"土" };
   var QZ_PLANET_NATURE = {
     "日":"命主太阳，主自我、声名与生命热力", "月":"身主太阴，主内心、母性与根基滋养",
@@ -10158,7 +10199,9 @@
     [35,36,"Throat","SolarPlexus"],[37,40,"SolarPlexus","Heart"],[39,55,"Root","SolarPlexus"],[42,53,"Sacral","Root"],
     [46,29,"Sacral","Sacral"],[47,64,"Head","Ajna"],[56,11,"Ajna","Throat"]
   ];
-  var HD_MOTORS = ["Sacral","Root","Heart"];
+  // 四个动力中心：荐骨、根、意志(Heart/Ego)、情绪(SolarPlexus)。原表漏了情绪中心，
+  // 会把大量显化者/显化生成者误判成指引者。
+  var HD_MOTORS = ["Sacral","Root","Heart","SolarPlexus"];
   var HD_TYPE_ELEM = { "Generator (生成者)":"木", "Manifesting Generator (显化生成者)":"木", "Manifestor (显化者)":"火", "Projector (指引者)":"水", "Reflector (反映者)":"土" };
   var HD_PROFILE = { "1/3":"探究者·在试错中建立认知","2/4":"隐士·需被看见与引荐","3/5":"烈士·背负试验场","4/6":"机会主义者·在网络中成熟","5/1":"异端·以深度回应质疑","6/2":"榜样·先经历后显化","1/4":"探究者·借人脉落地","2/5":"隐士·以影响辐射","3/6":"烈士·渐成楷模","4/1":"机会者·以深度立基","5/2":"异端·以本然示范","6/3":"榜样·在波折中提炼" };
   function _hd_gate(lon){ return (Math.floor((((lon%360)+360)%360)/5.625)%64)+1; }
@@ -10170,16 +10213,19 @@
     var gates={}; [jd,jdD].forEach(function(j){ var bs=_hd_bodies(j); for (var k in bs){ gates[_hd_gate(bs[k])]=1; } });
     var defC={}, defCh=[];
     HD_CHANNELS.forEach(function(ch){ if(gates[ch[0]]&&gates[ch[1]]){ defCh.push(ch); defC[ch[2]]=1; defC[ch[3]]=1; } });
-    var sacralDef=!!defC["Sacral"], throatDef=!!defC["Throat"];
-    function pair(ch){ return [ch[2],ch[3]].sort().join(); }
-    var sacralToThroat=defCh.some(function(ch){ var p=pair(ch); return p==="SacralThroat"||p==="GSacral"||p==="GThroat"; });
-    var motorToThroat=defCh.some(function(ch){ var m=ch[2],o=ch[3]; return (HD_MOTORS.indexOf(m)>=0&&o==="Throat")||(HD_MOTORS.indexOf(o)>=0&&m==="Throat"); });
+    var sacralDef=!!defC["Sacral"], nDef=Object.keys(defC).length;
+    // 标准人类图判据：荐骨有定义 + 动力中心经通道直连喉咙 → 显化生成者；
+    // 仅有荐骨 → 生成者；荐骨空但动力连喉 → 显化者；其余有定义 → 指引者；全空 → 反映者。
+    var motorToThroat=defCh.some(function(ch){
+      var m=ch[2],o=ch[3];
+      return (HD_MOTORS.indexOf(m)>=0&&o==="Throat")||(HD_MOTORS.indexOf(o)>=0&&m==="Throat");
+    });
     var type, strategy;
-    if (Object.keys(defC).length===0){ type="Reflector (反映者)"; strategy="等待月相周期（以 lunar 为权威）"; }
-    else if (sacralDef && sacralToThroat && motorToThroat){ type="Manifesting Generator (显化生成者)"; strategy="先回应、再行动，对正确之事发起"; }
-    else if (sacralDef && sacralToThroat){ type="Generator (生成者)"; strategy="等待荐骨 YES/NO、再行动"; }
-    else if (motorToThroat){ type="Manifestor (显化者)"; strategy="先宣示意图、再行动，减少误解"; }
-    else { type="Projector (指引者)"; strategy="等待被邀请、不强行介入"; }
+    if (nDef===0){ type="Reflector (反映者)"; strategy="等满一个月相周期（约 28 天）再定，多听环境反馈"; }
+    else if (sacralDef && motorToThroat){ type="Manifesting Generator (显化生成者)"; strategy="先等荐骨回应，再发起；允许中途改道"; }
+    else if (sacralDef){ type="Generator (生成者)"; strategy="等荐骨给出 YES/NO 再投入，别用脑子硬推"; }
+    else if (motorToThroat){ type="Manifestor (显化者)"; strategy="行动前先告知相关人，减少阻力与误会"; }
+    else { type="Projector (指引者)"; strategy="等被邀请、被看见再出手，把力气用在识别与指引"; }
     var authority;
     if (defC["SolarPlexus"]) authority="情绪权威（重大决定等待情绪清明）";
     else if (sacralDef) authority="荐骨/骶骨权威（对身体直觉响应）";
@@ -10287,21 +10333,48 @@
     var zhiPal=BRANCH_PALACE[shiZhi]||5, zhiDoor=DOOR_BASE[zhiPal]||"休";
     var startIdx=DOORS_CYCLE.indexOf(zhiDoor), doorPal={};
     for(var i=0;i<8;i++){ var dp=yin?((zhiPal-1+i)%9)+1:((zhiPal-1-i+9)%9)+1; doorPal[DOORS_CYCLE[(startIdx+i)%8]]=dp; }
-    var jimen=[]; ["开","休","生"].forEach(function(d){ if(doorPal[d]) jimen.push({ door:d, palace:doorPal[d], dir:QIMEN_PALACE_DIR[doorPal[d]] }); });
+    // 吉门不能只写死「开休生」三个名字：按本盘各门所落之宫的五行生克，逐个判「门宫关系」，
+    // 门迫/受制者力减，据此排序并留下依据，方位建议才真正出自这个盘而非通用话术。
+    var DOOR_ELEM={"开":"金","休":"水","生":"土"};
+    var PAL_ELEM={"1":"水","2":"土","3":"木","4":"木","5":"土","6":"金","7":"金","8":"土","9":"火"};
+    var jimen=[];
+    ["开","休","生"].forEach(function(d){
+      var pal=doorPal[d]; if(!pal) return;
+      var de=DOOR_ELEM[d], pe=PAL_ELEM[String(pal)]||"土", rel, rank;
+      if(de===pe){ rel="门宫比和，气顺"; rank=3; }
+      else if(SHENG[de]===pe){ rel="门生宫，气泄而和"; rank=2; }
+      else if(SHENG[pe]===de){ rel="宫生门，得地助力"; rank=3; }
+      else if(KE[de]===pe){ rel="门克宫（门迫），力减"; rank=1; }
+      else if(KE[pe]===de){ rel="宫克门（受制），力减"; rank=1; }
+      else { rel="门宫平和"; rank=2; }
+      jimen.push({ door:d, palace:pal, dir:QIMEN_PALACE_DIR[pal], quality:rel, rank:rank });
+    });
+    jimen.sort(function(a,b){ return b.rank-a.rank; });
     var jishi = (["开","休","生"].indexOf(zhiDoor)>=0) ? (shiGan+shiZhi) : null;
     return { yin:yin, ju:ju, yuan:yuan, jieqi:jqIdx, zhifu_star:zhifuStar, zhishi_door:zhiDoor,
-      door_palaces:doorPal, jimen:jimen, jishi:jishi };
+      door_palaces:doorPal, jimen:jimen, jishi:jishi, best_door:jimen.length?jimen[0].door:null };
   }
   function qimen_signals(qm, bazi){
-    var res={};
-    var ausDirs=qm.jimen.map(function(j){ return j.door+"门·"+j.dir; }).join("、");
-    res["时机运势"]=["奇门遁甲（本命时盘）："+(qm.yin?"阴遁":"阳遁")+qm.ju+"局（"+qm.yuan+"元），值符「"+qm.zhifu_star+"」星、值使「"+qm.zhishi_door+"」门；吉门方位："+ausDirs+(qm.jishi?"；当日吉时：「"+qm.jishi+"」":"")+"——择时与方位可借势，须与八字用神、玄空飞星吉方互参。",4];
-    res["事业"]=["奇门：重大决策/签约宜选「开」门方位与吉时，利开拓成事；避「死/惊」门方位。",4];
-    res["财运"]=["奇门：「生」门方位利求财聚气；「伤/杜」门方位宜守不宜冒进。",4];
-    res["婚姻"]=["奇门：婚恋择吉可参「开/休」门方位与六合吉神时；避「死/惊」门。",3];
-    res["健康"]=["奇门：出行/就医可选「休/生」门方位；急症避「死」门方位。",3];
-    res["家庭(六亲)"]=["奇门：家宅动土/搬迁宜择吉门方位与吉时；与玄空飞星吉方同参更佳。",3];
-    res["性格"]=["奇门：本命盘「"+qm.zhifu_star+"」值符主你先天掌运之星性，与日主互参。",3];
+    var de=bazi.day_element, res={};
+    var PAL_ELEM={"1":"水","2":"土","3":"木","4":"木","5":"土","6":"金","7":"金","8":"土","9":"火"};
+    function byDoor(d){ return qm.jimen.filter(function(j){return j.door===d;})[0]; }
+    function info(d, act){
+      var j=byDoor(d);
+      if(!j) return "奇门：本盘「"+d+"」门未布入可用宫位，"+act+"宜另择时方，不宜强行借势。";
+      var pe=PAL_ELEM[String(j.palace)]||"土";
+      var rel = pe===de ? "与你日主"+de+"同气" : (SHENG[pe]===de ? "生扶你日主"+de : (KE[pe]===de ? "克泄你日主"+de : "与你日主"+de+"中和"));
+      return "奇门："+act+"宜取「"+j.door+"」门·"+j.dir+"——此门"+j.quality+"，落宫五行"+pe+"，"+rel+"。";
+    }
+    function lv(d){ var j=byDoor(d); return j?(j.rank>=2?4:2):3; }
+    var usable=qm.jimen.filter(function(j){return j.rank>=2;});
+    var ausDirs=usable.length? usable.map(function(j){ return j.door+"门·"+j.dir+"（"+j.quality+"）"; }).join("、") : "本盘三吉门皆受制，宜另择时";
+    res["时机运势"]=["奇门遁甲（本命时盘）："+(qm.yin?"阴遁":"阳遁")+qm.ju+"局（"+qm.yuan+"元），值符「"+qm.zhifu_star+"」星、值使「"+qm.zhishi_door+"」门；可用吉门方位："+ausDirs+(qm.jishi?"；本时辰即吉时「"+qm.jishi+"」":"")+"——择时借势，须与八字用神、玄空飞星吉方互参。", usable.length?4:2];
+    res["事业"]=[info("开","重大决策、签约、开拓"), lv("开")];
+    res["财运"]=[info("生","求财、谈单、聚气"), lv("生")];
+    res["婚姻"]=[info("休","婚恋沟通、缓和关系"), lv("休")];
+    res["健康"]=[info("生","就医、调养、出行"), lv("生")];
+    res["家庭(六亲)"]=[info("开","家宅动土、搬迁、议家事"), lv("开")];
+    res["性格"]=["奇门：本命盘值符「"+qm.zhifu_star+"」星、值使「"+qm.zhishi_door+"」门，主你遇事掌运与切入的方式；与日主"+de+"互参。",3];
     return res;
   }
 
@@ -10683,32 +10756,48 @@
     var day_gan = bazi.day_master;
     var enMap = {}; if (dayun_enrich) dayun_enrich.forEach(function (e) { enMap[e.gz] = e; });
     var strengths = [], cautions = [], dim_tips = {};
-    var DIM_ADVICE = {
-      "性格": function (dir) { return dir === "吉/强" ? "你自我认知清晰、气质鲜明。把长处用在建立个人口碑与专业标签上，少在不相干的人面前过度暴露底牌。" : dir === "平" ? "你性情中和、可塑性强。别急着给自己贴固定标签，多在不同环境里试，靠反馈校准自我。" : "你内在有矛盾张力。遇事多自省，借可信赖的外界反馈校准定位，别在情绪头上下决定。"; },
-      "事业": function (dir) { return dir === "吉/强" ? "事业动能强。主动争取、承担更大责任、打磨专业壁垒；但顺境里也别放松风控、别盲目加注。" : dir === "平" ? "稳中有进。先把手艺做深、把人脉做厚，不急于跳槽或跃迁，等窗口。" : "事业承压期。借平台与团队、别单兵冒进，也别频繁跳槽——越动越乱，先稳住再图。"; },
-      "财运": function (dir) { return dir === "吉/强" ? "财源顺。稳健理财、留应急金，偏财只动闲钱，不追加杠杆。" : dir === "平" ? "守成为主。控支出、防借贷与冲动消费，别替人担保背债。" : "财运偏弱。留足应急、降杠杆、以技能变现为本，投资能不碰就不碰。"; },
-      "婚姻": function (dir) { return dir === "吉/强" ? "感情配对较顺。在互补中经营、择时而定，别因顺利就忽略沟通。" : dir === "平" ? "重精神契合、多沟通，晚婚或成熟后更稳，别被催婚推着走。" : "婚缘有波折之象。互相体谅、重大决定缓步，防外部干扰与旧账翻腾，婚前把财产与期待谈清。"; },
-      "家庭(六亲)": function (dir) { return dir === "吉/强" ? "六亲缘分与家庭支持较足。珍惜亲情、反哺长辈，也别因顾家耽误自身成长。" : dir === "平" ? "维系纽带、尽责尽份，平淡中见真情，别让忙成为疏远的借口。" : "亲缘或有疏离/牵挂。主动联络、尽早在关键处尽心力，别等事了才后悔。"; },
-      "健康": function (dir) { return dir === "吉/强" ? "先天体质尚可。保持起居有常、定期体检即可，别仗着底子好透支。" : dir === "平" ? "规律作息、适度锻炼，盯紧薄弱环节，小毛病别拖。" : "健康提示偏多。定期体检、早养薄弱环节、绝不透支，把身体当资产管。"; },
-      "时机运势": function (dir) { return dir === "吉/强" ? "近年窗口偏吉。把握节奏主动作为，但也别在顺境里放松风控。" : dir === "平" ? "顺势而为、择机而动，不强行，重大变动先备预案。" : "时机偏守。蓄势待时、以静制动，重大决策暂缓，先把风险敞口降下来。"; }
+    // 每个维度的建议不再按「吉/平/弱」三档套话，而是读出该维度各体系的真实投票、
+    // 结合本命日主与用神，说明「谁撑起来、谁拖后腿、所以该怎么做」。
+    var DIM_HOW = {
+      "性格":"重大自我判断前找可信的人复核一次，别在情绪头上给自己下定义",
+      "事业":"把力气集中在能积累壁垒的事上：顺境加码、逆境补能力",
+      "财运":"先稳现金流与负债结构，再谈收益",
+      "婚姻":"把期待与边界提前谈清，重大承诺慢半拍",
+      "家庭(六亲)":"主动维持联络密度，别等事情发生才补",
+      "健康":"按最弱五行对应的脏腑做针对性体检与作息",
+      "时机运势":"用逐年评分决定冲还是守，重大变动先备预案"
     };
-    var DIM_CAUTION = {
-      "性格": "自我认知或性格局限有分歧——重大决策前多听可信反馈、别在情绪头上下判断",
-      "事业": "事业有承压或信号分歧——先稳住现有摊子、别单兵冒进，也别频繁跳槽越动越乱",
-      "财运": "财运偏弱或信号分歧——以守成为主、不新增杠杆、不替人担保背债",
-      "婚姻": "婚缘有波折之象——多沟通、慢决定，重大承诺前把期待与边界谈清",
-      "家庭(六亲)": "亲缘或有疏离/牵挂——主动维系、尽早尽心力，别等事了才补",
-      "健康": "健康提示偏多——定期体检、早养薄弱环节、绝不透支，把身体当资产管",
-      "时机运势": "时机偏守——蓄势待时、重大决策暂缓，先把风险敞口降下来"
-    };
+    function _voteBrief(v){
+      var t=String(v.text||""); var i=t.indexOf("：");
+      if(i>=0&&i<34) t=t.slice(i+1);
+      return v.system+"("+v.level+"分)说"+t.slice(0,26);
+    }
+    function buildTip(m){
+      var vs=(m.votes||[]).slice();
+      if(!vs.length) return "「"+m.dimension+"」暂无足够体系信号，先以现实反馈校准。";
+      var hi=vs.slice().sort(function(a,c){return c.level-a.level;}).slice(0,2);
+      var lo=vs.slice().sort(function(a,c){return a.level-c.level;}).slice(0,2);
+      var dir=m.mean_level>=4?"整体偏强":(m.mean_level>=3?"整体持平":"整体偏弱");
+      var cons=m.consistency==="高一致"?"各体系口径接近，这条结论可信度高，可以照着发力"
+        :m.consistency==="分歧"?"评级跨度 "+(m.range||"—")+"、体系间分歧明显，别把任何单一说法当定论"
+        :"多数体系给中性票，属于不突出也不拖后腿的领域";
+      return "「"+m.dimension+"」均分 "+m.mean_level+"（"+dir+"）。撑起来的是 "+hi.map(_voteBrief).join("；")+
+        "；拖后腿的是 "+lo.map(_voteBrief).join("；")+"。"+cons+"。你日主"+bazi.day_master+"（"+bazi.day_element+"、"+bazi.strength+
+        "），用神偏「"+((xi_set||[]).slice(0,3).join("、")||"—")+"」——"+(DIM_HOW[m.dimension]||"顺着评级安排节奏")+"。";
+    }
     matrix.forEach(function (m) {
-      var dir = m.mean_level >= 4 ? "吉/强" : (m.mean_level >= 3 ? "平" : "弱/宜守");
-      dim_tips[m.dimension] = DIM_ADVICE[m.dimension] ? DIM_ADVICE[m.dimension](dir) : "参考综合评级顺势而为。";
-      if (m.consistency === "高一致" && m.mean_level >= 4) strengths.push(m.dimension + "：多体系高度一致且评级强，是你可以重点发力、放心投入的人生领域");
-      if (m.consistency === "分歧" || m.mean_level < 3) cautions.push(m.dimension + "：" + (DIM_CAUTION[m.dimension] || "结论分歧或评级偏弱，是容易踩坑的方面——重大决策放慢、以现实反馈校准"));
+      dim_tips[m.dimension] = buildTip(m);
+      var vs=(m.votes||[]).slice();
+      var hi=vs.slice().sort(function(a,c){return c.level-a.level;})[0];
+      var lo=vs.slice().sort(function(a,c){return a.level-c.level;})[0];
+      if (m.consistency === "高一致" && m.mean_level >= 4)
+        strengths.push(m.dimension + "：均分 " + m.mean_level + "、" + vs.length + " 个体系口径接近" + (hi?"，「"+hi.system+"」给到 "+hi.level+" 分":"") + "，是可以放心投入的领域");
+      if (m.consistency === "分歧" || m.mean_level < 3)
+        cautions.push(m.dimension + "：" + (m.consistency==="分歧"?"评级跨度 "+(m.range||"—")+"、体系间分歧大":"均分仅 "+m.mean_level) + (lo?"，「"+lo.system+"」只给 "+lo.level+" 分":"") + "——" + (DIM_HOW[m.dimension]||"重大决策放慢、以现实反馈校准"));
     });
-    if (!strengths.length) strengths.push("整体均衡：各维度评级以「平」为主，没有特别突出的长板，宜稳步积累、不必急于求成");
-    if (!cautions.length) cautions.push("无明显短板：整体偏稳，但「平」也意味着没有躺赢的运气，保持节奏、居安思危即可");
+    var hasStrength = strengths.length > 0, hasCaution = cautions.length > 0;
+    if (!hasStrength) strengths.push("七维里没有同时满足「高一致且偏强」的项（高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] + " 项）——整体偏均衡，宜稳步积累、别急着找捷径");
+    if (!hasCaution) cautions.push("七维里没有明显分歧或低分项，整体偏稳；但中性不等于躺赢，保持节奏、居安思危即可");
     var phase = [];
     if (bazi.dayun.length) {
       if (bazi.dayun[0].start_age > 0) {
@@ -10720,7 +10809,7 @@
         var score = _dayun_fav(bazi, d, xi_set, ji_set);
         var tip = _phase_tip(bazi, d, god, score, enMap[d.gz]);
         var fav = score > 0.5, bad = score < -0.5;
-        var plain = "约 " + Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + " 岁（「" + d.gz + "」运）：这是你人生的【" + (fav ? "上坡段，适合主动争取、放大成果" : bad ? "守成段，先把风险降下来、补能力短板" : "平稳积累段，做厚基本盘、等窗口") + "】。";
+        var plain = "约 " + Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + " 岁（「" + d.gz + "」运，运干「" + d.gz[0] + "」为" + god + "、喜忌评分 " + score + "）：这是你人生的【" + (fav ? "上坡段，适合主动争取、放大成果" : bad ? "守成段，先把风险降下来、补能力短板" : "平稳积累段，做厚基本盘、等窗口") + "】。" + (enMap[d.gz] && enMap[d.gz].daxian ? "紫微大限走「" + enMap[d.gz].daxian.palace + "宫」，这十年重心往那边偏。" : "");
         phase.push({ range: Math.round(d.start_age) + "–" + Math.round(d.end_age - 1) + "岁", gz: d.gz, tip: tip, plain: plain });
       });
     }
@@ -10730,19 +10819,19 @@
       "——喜运的十年主动出击、放大成果，忌运的十年收着点、先把风险敞口降下来。";
     if (review_flags.length) overall += " 另：" + review_flags.join("");
     function _shortDim(t) { var i = t.indexOf("："); return i >= 0 ? t.slice(0, i) : t; }
-    var strengthPlain = strengths.length ? strengths.slice(0, 2).map(_shortDim).join("、") : "整体偏均衡，无明显突出长板";
-    var cautionPlain = cautions.length ? cautions.slice(0, 2).map(_shortDim).join("、") : "整体偏稳，暂无明显短板预警";
+    var strengthPlain = hasStrength ? strengths.slice(0, 2).map(_shortDim).join("、") : "";
+    var cautionPlain = hasCaution ? cautions.slice(0, 2).map(_shortDim).join("、") : "";
     var _ovBody;
-    if (strengths.length && cautions.length) {
+    if (hasStrength && hasCaution) {
       _ovBody = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；但【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍。";
-    } else if (strengths.length && !cautions.length) {
+    } else if (hasStrength && !hasCaution) {
       _ovBody = "你在【" + strengthPlain + "】上比较有底气，可以放心投入；整体没有明显短板，保持节奏、居安思危即可。";
-    } else if (!strengths.length && cautions.length) {
-      _ovBody = "【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍；但整体偏均衡，稳扎稳打也能成事。";
+    } else if (!hasStrength && hasCaution) {
+      _ovBody = "【" + cautionPlain + "】方面容易踩坑，重大决策要慢半拍；整体没有特别突出的长板，稳扎稳打也能成事。";
     } else {
       _ovBody = "整体偏均衡，没有特别突出的长板、也没有明显短板——稳步积累、居安思危，顺势而为即可。";
     }
-    var overall_plain = _ovBody + "整体你身「" + bazi.strength + "」，走『喜用』的十年就大胆冲，走『忌』的十年就收着点。";
+    var overall_plain = _ovBody + "这份判断来自七维交叉：高一致 " + cons_counts["高一致"] + " 项、中一致 " + cons_counts["中一致"] + " 项、分歧 " + cons_counts["分歧"] + " 项；你日主「" + bazi.day_master + "」(" + bazi.day_element + ")、" + bazi.strength + "，用神偏「" + ((xi_set||[]).slice(0,2).join("、")||"—") + "」——走喜用的十年敢冲，走忌的十年收着点。";
     return { overall: overall, overall_plain: overall_plain, strengths: strengths, cautions: cautions, dimension_tips: dim_tips, by_phase: phase };
   }
 
@@ -10929,7 +11018,14 @@
           : "该十年流年评分均值约 " + bestPhase.avg + "（仍偏弱），未来数年动能整体偏收敛，没有特别顺的「发力大年」——以稳守、降风险、补能力为主；仍可逢个别平 / 吉年小步推进，不透支、不加杠杆。"
       } : null,
       next_attack: atk, next_defend: def, timeline: tl,
-      principle: "好年攻、坏年守：在「进攻窗口」集中资源办大事、敢争取；在「防守期」收敛开支、降杠杆、把决策节奏放慢。用这份逐年曲线，你就能自己判断——接下来哪几年该冲、哪几年该忍。"
+      principle: (function(){
+        var bp = bestPhase ? (bestPhase.y0 + "–" + bestPhase.y1 + " 年「" + bestPhase.gz + "」运（逐年均值 " + bestPhase.avg + "）") : "未来各运未见明显顺境";
+        var at = atk.length ? atk.slice(0,3).map(function(x){ return x.year + "(" + x.score + ")"; }).join("、") : "近期无明显进攻年";
+        var df = def.length ? def.slice(0,3).map(function(x){ return x.year + "(" + x.score + ")"; }).join("、") : "近期无明显防守年";
+        return "按你这盘的逐年曲线：当前在「" + (curPhaseOut ? curPhaseOut.gz : "—") + "」运，最顺的十年是 " + bp +
+          "；宜主动进取的年份 " + at + "，宜收着来的年份 " + df +
+          "。进攻年把资源集中办大事，防守年降杠杆、放慢决策——冲还是忍，以这条曲线为准，别凭当时的情绪。";
+      })()
     };
 
     // 5) 自我觉察提示（把术语翻译成自省，而非宿命恐吓）
@@ -11429,7 +11525,11 @@
     var char_core = "日主" + de + "（" + day_gan + "）" + strength + "，十神以「" + (key_gods.slice(0, 3).join("、") || "中和") + "」为显，先天性格" +
       (strength === "身旺" ? "偏主动外放，自主性强但易固执" : strength === "身弱" ? "偏内敛依赖，善借力但易犹豫" : "中和，能屈能伸、随势调柔") +
       "；紫微命宫主星「" + (ziwei.main_star || "—") + "」赋予底色。";
-    var char_core_plain = "你天生是【" + (strength === "身旺" ? "很有主见、主动、但容易一根筋" : strength === "身弱" ? "更依赖环境、善借力、但也容易犹豫" : "灵活、好相处、能屈能伸") + "】的人。你身上最明显的特质是【" + (char_traits.join("、") || "性情中和") + "】——这基本是你性格的底色。紫微说的『命宫主星" + (ziwei.main_star || "—") + "』，只是从另一个角度印证了这点。";
+    var _cvChar = ((cv.matrix||[]).filter(function(m){return m.dimension==="性格";})[0]||{}).votes||[];
+    var _chHi = _cvChar.slice().sort(function(a,b){return b.level-a.level;})[0];
+    var _chLo = _cvChar.slice().sort(function(a,b){return a.level-b.level;})[0];
+    var _tgTop = (bazi.ten_gods||[]).slice(0,3).join("、");
+    var char_core_plain = "你天生偏【" + (strength === "身旺" ? "很有主见、主动、但容易一根筋" : strength === "身弱" ? "更依赖环境、善借力、但也容易犹豫" : "灵活、好相处、能屈能伸") + "】；命里最显眼的十神是【" + _tgTop + "】，所以最突出的特质是【" + (char_traits.join("、") || "性情中和") + "】。紫微命宫主星「" + (ziwei.main_star || "—") + "」" + (_chHi?"，交叉矩阵里「"+_chHi.system+"」给性格 "+_chHi.level+" 分":"") + (_chLo?"、而「"+_chLo.system+"」只给 "+_chLo.level+" 分":"") + "——两边合看，才是你遇事时的真实本能反应。";
 
     // 性格阶段：用 _dayun_story
     var char_phases = [];
@@ -11450,7 +11550,8 @@
     var child_gods = gender === "女" ? tg.filter(function (g) { return g === "食神" || g === "伤官"; }).length : tg.filter(function (g) { return g === "正官" || g === "七杀"; }).length;
     var children_txt = "时柱「" + bazi.four_pillars.hour.gz + "」为子女宫，紫微子女宫" + (_pal(ziwei,"子女").stars.join("、") || "空宫") + "；子女星（" + (gender === "女" ? "食伤" : "官杀") + "）" + child_gods + "现，" +
       (child_gods >= 1 ? "子女缘分有基，晚景可得子女之伴" : "子女缘分偏弱或来得晚，宜顺其自然") + "。";
-    var parents_plain = "你和我们父母（或从小带大你的人）的关系，大概率是【" + (strength === "身旺" ? "比较独立，早早就自己拿主意" : "比较依赖长辈、受家里庇护偏多") + "】。年柱代表父母宫，可以对照你实际成长经历看看准不准。";
+    var _cvFam = ((cv.matrix||[]).filter(function(m){return m.dimension==="家庭(六亲)";})[0]||{});
+    var parents_plain = "你和父母（或从小带大你的人）的关系，大概率偏【" + (strength === "身旺" ? "比较独立，早早就自己拿主意" : "比较依赖长辈、受家里庇护偏多") + "】，这与你日主" + de + strength + "有关" + (_cvFam.mean_level?"；交叉矩阵里六亲维度均分 "+_cvFam.mean_level+"（"+(_cvFam.consistency||"—")+"）":"") + "。年柱代表父母宫，拿实际成长经历对照一下准不准，对不上先查出生时辰。";
     var siblings_plain = "关于兄弟姐妹/同辈：你【" + (bi_jie >= 2 ? "手足缘分不浅，但一起时也容易有竞争" : "手足不多或平时联系一般，更该珍惜同辈情谊") + "】。";
     var children_plain = "子女方面：你【" + (child_gods >= 1 ? "和孩子的缘分有基础，晚年容易有孩子陪伴" : "孩子缘分偏晚或偏淡，顺其自然就好") + "】。";
 
@@ -11474,7 +11575,7 @@
       var detail = a + "岁「" + gz_y + "」" + rel_type + "（生肖：" + zr.type + "），";
       if (story) detail += "所在" + dy_gz + "大运：" + story.summary + "；";
       detail += "主家宅、长辈或户籍/居所波动，宜多顾亲缘、少远行迁动。";
-      fam_events.push({ age: a, year: yr, cat: "家庭", label: "家宅/长辈缘波动", detail: detail, plain: "约 " + a + " 岁（" + yr + " 年），家里或长辈方面容易有波动（比如搬家、户籍变动、长辈健康或事务）——这一年多顾着点家人、少做远行搬迁。" });
+      fam_events.push({ age: a, year: yr, cat: "家庭", label: yr + "年·" + rel_type + "（" + dy_gz + "运）", detail: detail, plain: "约 " + a + " 岁（" + yr + " 年「" + gz_y + "」，行「" + dy_gz + "」大运）：" + rel_type + "，生肖上属「" + zr.type + "」" + (story ? "；这步运的底色是" + String(story.summary).slice(0,36) : "") + "。落到生活里就是家里或长辈容易有变动（搬家、长辈健康、户籍事务），这年多顾家、少做远行搬迁。" });
     }
     fam_events = fam_events.slice(0, 4);
 
@@ -11485,7 +11586,8 @@
     var marriage_trait = "配偶星（" + (gender === "女" ? "官杀" : "财星") + "）" + spouse_cnt + "现，夫妻宫日支为「" + day_zhi + "」（" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "），紫微夫妻宫" + (fp_sp.stars.join("、") || "空宫") + "；" +
       (spouse_cnt >= 1 ? "配偶多有主见、在关系中角色明显" : "配偶星偏弱，婚姻宜晚成、宜择能互补者") +
       "；相处上" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "偏稳定务实" : "偏灵动多变") + "。";
-    var marriage_trait_plain = "你吸引的伴侣类型，看『配偶星』——你命里【" + (spouse_cnt >= 1 ? "伴侣多半挺有主见、在关系里存在感强" : "伴侣缘分偏弱，更适合晚婚、找能互补的人") + "】。你俩的相处风格偏【" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "稳定踏实" : "灵动多变") + "】。紫微夫妻宫『" + (fp_sp.stars.join("、") || "空宫") + "』也印证了这点。";
+    var _cvMar = ((cv.matrix||[]).filter(function(m){return m.dimension==="婚姻";})[0]||{});
+    var marriage_trait_plain = "看配偶星：你命里" + (gender === "女" ? "官杀" : "财星") + "共 " + spouse_cnt + " 现，日支「" + day_zhi + "」属" + ZHI_ELEMENT[ZHI_INDEX[day_zhi]] + "，" + (spouse_cnt >= 1 ? "伴侣多半有主见、在关系里存在感强" : "缘分偏弱，更适合晚婚、找互补的人") + "；相处风格偏【" + (["正财","正官"].indexOf(sp_god0) >= 0 ? "稳定踏实" : "灵动多变") + "】。紫微夫妻宫『" + (fp_sp.stars.join("、") || "空宫") + "』" + (_cvMar.mean_level ? "，婚姻维度交叉均分 " + _cvMar.mean_level + "（" + (_cvMar.consistency||"—") + "）" : "") + "——这些是倾向，不是定数。";
     var m_window = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age);
@@ -11539,7 +11641,7 @@
         var en4 = dy4[0] ? enMap[dy4[0]] : null;
         var story4 = en4 ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy4[0]; })[0], en4, yijing) : null;
         var detail = a3 + "岁「" + gz_y3 + "」" + (isCareerYear ? "流年地支引动官禄宫（" + fp_career.zhi + "），行「" + (dy4[0] || "—") + "」运（" + g4 + "）；" : "") + (suiyun ? "岁运并临，事业气场被加倍放大；" : "") + (tianke ? "天克地冲，职场/岗位/平台易生剧变；" : "") + (story4 ? "大运基调：" + story4.summary : "") + "主事业转折或进位。";
-        career_events.push({ age: a3, year: yr3, cat: "事业", label: label, detail: detail, plain: "约 " + a3 + " 岁（" + yr3 + " 年），事业上容易出大事（升职、换平台或岗位剧变）——这是你职场的关键年份：重大决策别轻易跳船，也别错过进位机会。" });
+        career_events.push({ age: a3, year: yr3, cat: "事业", label: yr3 + "年·" + label, detail: detail, plain: "约 " + a3 + " 岁（" + yr3 + " 年「" + gz_y3 + "」，行「" + (dy4[0]||"—") + "」运、" + g4 + "）：" + label + "——" + (suiyun ? "岁运并临，事业气场被放大；" : tianke ? "天克地冲，岗位或平台容易剧变；" : "流年引动官禄宫；") + "这是职场关键年，重大决策别轻易跳船，也别错过进位机会。" });
       }
     }
     career_events = career_events.slice(0, 4);
@@ -11568,14 +11670,15 @@
         var story5 = en5 ? _dayun_story(bazi, bazi.dayun.filter(function(dd){ return dd.gz === dy5[0]; })[0], en5, yijing) : null;
         var label = isFavYear ? "进财/增收年" : (isBadYear ? "破财风险年" : "财库聚合年");
         var detail = a4 + "岁「" + gz_y4 + "」" + (g5 ? "行「" + (dy5[0] || "—") + "」运（" + g5 + "）；" : "") + (zr4.lvl === "吉" ? "生肖" + zr4.type + "，贵人财气较顺；" : "") + (isFavYear ? "财星/食伤为喜，主进财或业务增收；" : "") + (isBadYear ? "忌神发力，主分夺或意外耗财，宜守现金流、不担保；" : "") + (story5 ? "大运财象：" + story5.summary : "");
-        wealth_events.push({ age: a4, year: yr4, cat: "财运", label: label, detail: detail, plain: "约 " + a4 + " 岁（" + yr4 + " 年），" + (label.indexOf("进财") >= 0 ? "财运偏顺，有机会增收或业务变现——顺势而为，但别放松风控。" : label.indexOf("破财") >= 0 ? "财运有破耗风险（分夺、意外开销）——宜守现金流、不担保、不追加投资。" : "财库聚合、贵人财气较顺——适合稳健理财。") });
+        wealth_events.push({ age: a4, year: yr4, cat: "财运", label: yr4 + "年·" + label, detail: detail, plain: "约 " + a4 + " 岁（" + yr4 + " 年「" + gz_y4 + "」，行「" + (dy5[0]||"—") + "」运、" + g5 + "，生肖" + zr4.type + "）：" + (isFavYear ? "财星/食伤为喜，有机会增收或业务变现——顺势而为，但别放松风控。" : isBadYear ? "忌神发力，有分夺或意外耗财风险——宜守现金流、不担保、不追加投资。" : "财库聚合、贵人财气较顺——适合稳健理财。") });
       }
     }
     wealth_events = wealth_events.slice(0, 5);
 
     // 健康
     var health_base = "日主" + de + strength + "，五行以「" + weak_elem + "」偏弱，对应" + organ + "；先天须留意该系统的养护，作息与情志为要。";
-    var health_base_plain = "你命里「" + weak_elem + "」这个五行偏弱，对应身体里的「" + organ + "」。不代表一定生病，而是这一块要更早养护——别熬夜透支、定期体检，把它当资产管。";
+    var _cvHea = ((cv.matrix||[]).filter(function(m){return m.dimension==="健康";})[0]||{});
+    var health_base_plain = "你命里「" + weak_elem + "」偏弱（只有 " + ((bazi.element_count||{})[weak_elem]||0) + " 个），对应身体里的「" + organ + "」" + (_cvHea.mean_level ? "；健康维度交叉均分 " + _cvHea.mean_level + "、" + (_cvHea.consistency||"—") : "") + "。不代表一定生病，而是这一块要更早养：别熬夜透支、定期体检，把它当资产管。";
     var health_phases = [];
     bazi.dayun.forEach(function (d) {
       var a0 = Math.round(d.start_age), a1 = Math.round(d.end_age - 1);
@@ -12037,85 +12140,198 @@
   // ============ 顶层分析 ============
   // ============ 各维度「小结 · 建议」通俗化（数据驱动，非模板）============
   // 给每个维度卡片结尾附一段大白话小结 + 建议，帮助用户看懂、能照着做。
+  // 维度小结：每条结论由「该体系实际算出的结果 + 本命日主喜忌 + 当前大运/攻守窗口」推导，
+  // 不写「这个体系是做什么的」这类与命盘无关的通用科普。
   function build_dim_advice(r) {
-    var b = r.bazi, z = r.ziwei, yj = r.yijing, mg = r.mingge;
-    var A = {};
-    function put(k, summary, advice) { A[k] = { summary: summary, advice: advice || "" }; }
-    var xi = mg && mg.xi_text ? mg.xi_text : "—", ji = mg && mg.ji_text ? mg.ji_text : "—";
+    var b=r.bazi, z=r.ziwei, yj=r.yijing, tb=r.tieban, mg=r.mingge, ys=r.yongshen;
+    var A={};
+    function put(k, summary, advice){ A[k]={summary:summary, advice:advice||""}; }
+    var de=b.day_element, strength=b.strength;
+    var xi=mg&&mg.xi_text?mg.xi_text:"—", ji=mg&&mg.ji_text?mg.ji_text:"—";
+    var xiSet=(mg&&mg.xi_set)||[], jiSet=(mg&&mg.ji_set)||[];
+    var weak=(mg&&mg.weak_element)||"—", top=(mg&&mg.top_element)||"—";
+    var ORGAN={"木":"肝胆","火":"心与小肠","土":"脾胃","金":"肺与大肠","水":"肾与膀胱"};
+    function rel5(e){
+      if(!e||e==="—") return "五行未明";
+      if(e===de) return "与日主"+de+"同气";
+      if(SHENG[e]===de) return "生扶日主"+de;
+      if(KE[e]===de) return "克泄日主"+de;
+      return "与日主"+de+"中和";
+    }
+    function isFav(e){ return !!e && (e===de||SHENG[e]===de); }
+    function fromTheme(re){
+      if(!cur||!cur.theme) return "—";
+      var m=cur.theme.match(re); return m?m[1]:"—";
+    }
+    var ap=r.action_playbook||{}, rh=ap.rhythm||{}, cur=rh.current_phase||null;
+    var curGZ=cur?cur.gz:"—", curFav=cur?!!cur.fav:false;
+    var win=(ap.window&&ap.window.verdict)?ap.window.verdict:"—";
+    // 各体系在七维交叉矩阵里的真实投票分布（最强/最弱信号、平均分）
+    var bySys={};
+    if(r.cv&&r.cv.matrix) r.cv.matrix.forEach(function(m){
+      (m.votes||[]).forEach(function(v){
+        (bySys[v.system]=bySys[v.system]||[]).push({dim:m.dimension, lvl:v.level, text:v.text});
+      });
+    });
+    function sysTone(name){
+      var vs=bySys[name]||[]; if(!vs.length) return "";
+      var avg=vs.reduce(function(s,v){return s+v.lvl;},0)/vs.length;
+      var hi=vs.slice().sort(function(a,c){return c.lvl-a.lvl;})[0];
+      var lo=vs.slice().sort(function(a,c){return a.lvl-c.lvl;})[0];
+      return "交叉矩阵里这一系七维平均 "+(Math.round(avg*10)/10)+" 分，最强在「"+hi.dim+"」("+hi.lvl+")、最弱在「"+lo.dim+"」("+lo.lvl+")。";
+    }
+    var liuRows=(r.liunian&&r.liunian.rows)||[];
+    function yearList(n,pred){ return liuRows.filter(pred).slice(0,n).map(function(x){return x.year+"("+(x.zodiac&&x.zodiac.animal?x.zodiac.animal:"")+")";}).join("、"); }
+
+    var ec=b.element_count||{};
+    var ecTxt=ELEMENTS.map(function(e){return e+(ec[e]||0);}).join("、");
+    var tenTop=(b.ten_gods||[]).slice(0,3).join("、");
+    var ysTxt=(ys&&ys.rows)?ys.rows.slice(0,2).map(function(x){return x.element+"→"+x.dir+"/"+x.ind.split("、")[0];}).join("；"):"";
     put("四柱八字",
-      "你日主是「" + b.day_master + "」（五行属" + b.day_element + "），命局偏【" + b.strength + "】。",
-      "最旺你的五行是【" + xi + "】，平时多选这类颜色、方位、行业会更顺；要少碰的是【" + ji + "】。具体怎么用，看下面「用神人生映射」。");
+      "日主「"+b.day_master+"」("+de+")，"+strength+"；五行 "+ecTxt+"，最旺「"+top+"」、最弱「"+weak+"」，十神以"+tenTop+"为主。",
+      "用神取【"+xi+"】、忌【"+ji+"】——落到现实就是优先往"+(ysTxt||"用神对应的方位与行业")+"靠。"+
+      "当前行「"+curGZ+"」运，"+(curFav?"属喜运，这十年可主动争取、把关键目标往前排":"偏忌运，这十年以守成、补短板为主")+
+      "；眼下整体判为「"+win+"」。最弱五行「"+weak+"」对应"+(ORGAN[weak]||"相应脏腑")+"，体检单独留意。");
+
+    var STAR_NOTE={
+      "紫微":"重格局与主导权，适合统筹、扛责","天机":"善谋划与变通，适合策略、企划","太阳":"外放慷慨、重名声，适合台前与公共事务",
+      "武曲":"刚毅果决、重执行与财帛，适合硬指标与财务管理","天同":"温和重感受、能抗压但偏守成，适合稳健积累","廉贞":"重原则也重感情、带才艺与交际张力，适合规则与人情并用的场域",
+      "天府":"稳重善守、重资源调度，适合管理与资产配置","太阴":"细腻内敛、重积累与审美，适合幕后、内容与长期经营","贪狼":"多才多欲、善开拓应酬，适合业务、市场与多元尝试",
+      "巨门":"善分析辨识、口舌是非也多，适合研究、法务、咨询","天相":"重协调与体面，适合中介、行政与辅佐","天梁":"重原则与庇荫，适合专业顾问、教育、医事",
+      "七杀":"果敢独立、能扛硬仗，适合攻坚、创业与变革岗位","破军":"破旧立新、变动大，适合改革拓荒，但忌反复横跳"
+    };
+    var ms=z.main_star||"—", msNote=STAR_NOTE[ms]||"以命宫星组看先天气质";
+    var fp=(z.palaces||[]).filter(function(p){return p.palace==="夫妻";})[0];
+    var fpStars=fp&&fp.stars&&fp.stars.length?fp.stars.join("、"):"空宫";
+    var dx=fromTheme(/紫微大限：([^｜|]+)/);
     put("紫微斗数",
-      "你的「命宫主星" + (z.main_star || "—") + "」相当于你的先天人设与天赋底色。",
-      "它决定了你给人的第一印象和擅长的领域；想看某十年的人生重心落在哪，翻到下面的「大运阶段详批」。");
+      "命宫主星「"+ms+"」——"+msNote+"；夫妻宫见「"+fpStars+"」。当前紫微大限行「"+dx+"」。",
+      "你日主"+de+"、"+strength+"，命宫"+ms+(["武曲","七杀","破军","廉贞","巨门"].indexOf(ms)>=0?"偏刚，宜配一道「慢下来复核」的环节":"偏柔，宜给自己加一点决断的硬度")+"。"+sysTone("紫微斗数")+
+      "这十年重心压在「"+dx+"」，把主要精力放这类事上比四处撒网划算；夫妻宫"+(fpStars==="空宫"?"无主星，关系质地更多由对宫与流年引动，宜以现实相处校准":"见「"+fpStars+"」，择偶与相处可参照该星性，别只凭第一印象"));
+
+    var ge=yj.gua_elem;
     put("周易梅花易数",
-      "本卦「" + yj.ben_gua + "」→ 变卦「" + yj.bian_gua + "」，说明你当前的人生课题是「" + yj.gua_nature + "」。",
-      "这步运正处在「旧阶段收尾、新阶段开启」的换挡期；做决定宜顺着卦象提示的「势」走，别硬顶。");
+      "本卦「"+yj.ben_gua+"」→ 变卦「"+yj.bian_gua+"」，动爻第 "+yj.dong_yao+" 爻，卦义「"+yj.meaning+"」，卦气属"+ge+"。",
+      "卦气"+ge+rel5(ge)+"，"+(isFav(ge)?"与命局同向，可借「"+yj.gua_nature+"」之势推进":"与命局相左，宜借卦意守静、别硬顶")+
+      "；动在第 "+yj.dong_yao+" 爻，变数多落在事情中段而非开头。当前「"+curGZ+"」运的本运卦为「"+fromTheme(/本运卦：([^｜|]+)/)+"」，两卦合看决定这几年该进还是该守。");
+
+    var tw=(tb&&tb.tiaowen)||[];
+    var twTxt=tw.slice(0,2).map(function(t){return t.dimension+"「"+t.number+"："+String(t.text).slice(0,26)+"」";}).join("、");
+    var geo=r.geo||{};
     put("铁板神数",
-      "铁板用干支化数推演六亲，主要用途是「核对出生时辰是否准确」。",
-      "如果你实际成长经历和里面某条（比如兄弟姐妹数量、父母缘）对不上，可能当时辰记录有出入——可以回头考证。");
+      "基数 "+((tb&&tb.base_number)||"—")+"，考时条文："+(twTxt||"无")+"；出生地"+geo.birthplace+"真太阳时校正 "+(geo.delta_h||0)+" 小时"+(geo.shichen_changed?"，时辰已跨 "+geo.shichen_before+"→"+geo.shichen_after:"，时辰未跨界")+"。",
+      "这些数不是定数，是拿来反推时辰准不准的：先核对「"+(tw[0]?tw[0].dimension:"六亲")+"」这条与实际经历是否对得上"+
+      (geo.shichen_changed?"；你的出生时刻恰好压在两个时辰交界上，尤其值得用实际事件复核一次——时辰一变，时柱与紫微命宫都会跟着变":"；若明显对不上，优先复查出生记录，再谈其余结论")+"。");
+
+    var faceOn=!!r.face, palmOn=!!r.palm;
     put("相学分析",
-      "面相/手相是辅助维度：由你勾选的特征 + 浏览器本地判定的气色，给出性格/健康等信号。",
-      "它只作参考，必须和八字、紫微等命理互参，且不是医疗诊断；别单看这一项下结论。");
-    if (r.xiyao) { var xa = r.xiyao;
+      (faceOn||palmOn)
+        ? "本次"+(faceOn?"面相":"")+(faceOn&&palmOn?"+":"")+(palmOn?"手相":"")+"已采集并入交叉验证；本命最弱五行「"+weak+"」对应「"+(ORGAN[weak]||"—")+"」。"
+        : "本次未启用面相/手相采集；这一维只看本命五行偏枯：最旺「"+top+"」、最弱「"+weak+"」，对应「"+(ORGAN[weak]||"—")+"」。",
+      (faceOn||palmOn?"采集到的特征只作辅助加权，":"这一维不进硬加权，")+"真正要落实的是：最弱「"+weak+"」对应的"+(ORGAN[weak]||"脏腑")+"提前养，在「"+curGZ+"」运里尤其别熬夜透支。相学不是医疗诊断，身体以体检为准。");
+
+    if(r.xiyao){ var xa=r.xiyao;
+      var aspTop=(xa.aspects||[]).slice(0,3).join("、");
+      var sunElem=_west_elem_of_sign(xa.sun_sign);
+      var sunHouse=(xa.planets&&xa.planets["日"])?xa.planets["日"].h:"—";
       put("西洋占星",
-        "你外在像【" + (WEST_SIGNS[xa.sun_sign] || "—") + "】、内心像【" + (WEST_SIGNS[xa.moon_sign] || "—") + "】、别人第一眼觉得你像【" + (WEST_SIGNS[xa.asc_sign] || "—") + "】。",
-        "这是西式性格画像，跟你八字日主互相印证；看你这十年的行运太阳/木土落座，就知道哪段适合进取、哪段宜夯实。");
+        "太阳"+(WEST_SIGNS[xa.sun_sign]||"—")+"（第"+sunHouse+"宫）、月亮"+(WEST_SIGNS[xa.moon_sign]||"—")+"、上升"+(WEST_SIGNS[xa.asc_sign]||"—")+"；主要相位："+(aspTop||"无强相位")+"。",
+        "太阳星座五行"+sunElem+rel5(sunElem)+"，中天在"+(WEST_SIGNS[xa.mc_sign]||"—")+"（事业轴线）。"+sysTone("西洋占星")+
+        "当前行运太阳推进到「"+fromTheme(/西洋：行运太阳([^｜|]+)/)+"」，这十年自我表达与事业重心跟着该宫主题走；月亮"+(WEST_SIGNS[xa.moon_sign]||"—")+"管你的安全感来源，压力大时先照顾这一头。");
     }
-    if (r.shengxiao) { var sx = r.shengxiao;
+
+    if(r.shengxiao){ var sx=r.shengxiao;
+      var nowY=(new Date()).getFullYear();
+      var nowRow=liuRows.filter(function(x){return x.year===nowY;})[0];
+      var badY=yearList(3,function(x){return /冲|刑|害|破|值/.test((x.zodiac&&x.zodiac.rel_type)||"");});
+      var goodY=yearList(3,function(x){return /三合|六合/.test((x.zodiac&&x.zodiac.rel_type)||"");});
       put("生肖流年",
-        "你属「" + sx.birth_animal + "」（五行" + sx.birth_elem + "）。",
-        "遇到和你生肖「冲/刑/害/破」的年份（比如本命年）宜低调守成、防变动；遇到「三合/六合」的年份适合合作进取。逐年对照看「流年详批」。");
+        "你属"+sx.birth_animal+"（"+sx.birth_elem+"、年支"+sx.birth_zhi+"）；"+nowY+" 年为"+(nowRow&&nowRow.zodiac?nowRow.zodiac.animal+"年·"+nowRow.zodiac.rel_type+"："+nowRow.zodiac.rel_text:"—")+"。",
+        "按你年支"+sx.birth_zhi+"逐年排："+(goodY?"三合/六合之年 "+goodY+" 适合合伙、推进；":"近年三合/六合不多，按常规节奏走；")+
+        (badY?"犯太岁之年 "+badY+" 低调守成、防变动；":"近年无明显犯太岁；")+"今年流年评分 "+(nowRow?nowRow.score:"—")+"，与「"+win+"」合着看。");
     }
-    if (r.qizheng) { var qz = r.qizheng;
-      var good = qz.planets.filter(function (p) { return ["日", "金", "木"].indexOf(p.planet) >= 0; }).map(function (p) { return p.planet + p.sign_name; });
+
+    if(r.qizheng){ var qz=r.qizheng;
+      var QZ_ROLE={"日":"自我与声名","月":"内心与家宅","金":"情缘与财帛","木":"机遇与扩张","水":"思维与沟通","火":"行动与冲突","土":"结构与考验"};
+      var pGood=qz.planets.filter(function(p){return isFav(p.elem);});
+      var pBad=qz.planets.filter(function(p){return KE[p.elem]===de;});
       put("七政四余",
-        "看日月五星落座，找到对你最有利的「吉星」（如" + (good.length ? good.join("、") : "日/金/木") + "）和要小心的煞星。",
-        "把它和八字喜忌对照：吉星五行生你日主就加分，克你就减分（见「多维交叉验证」矩阵）。");
+        "日月五星落座："+qz.planets.map(function(p){return p.planet+p.sign_name;}).join("、")+"；罗睺在"+qz.rahu_sign+"、计都在"+qz.ketu_sign+"。",
+        "以你日主"+de+"逐颗校："+(pGood.length?"生扶/同气的是 "+pGood.map(function(p){return p.planet+p.sign_name+"("+p.elem+")";}).join("、")+"，主「"+pGood.map(function(p){return QZ_ROLE[p.planet];}).join("、")+"」的事容易借力；":"")+
+        (pBad.length?"克泄的是 "+pBad.map(function(p){return p.planet+p.sign_name+"("+p.elem+")";}).join("、")+"，主「"+pBad.map(function(p){return QZ_ROLE[p.planet];}).join("、")+"」要留余量；":"")+
+        "南北交轴线落在"+qz.rahu_sign+"/"+qz.ketu_sign+"，是这轮人生「要往哪长」与「习惯退回去」的两端。"+sysTone("七政四余"));
     }
-    if (r.numerology) { var num = r.numerology;
+
+    if(r.numerology){ var num=r.numerology;
+      var lpE=NUM_ELEM[num.life_path]||"—", pyE=NUM_ELEM[num.personal_year]||"—";
       put("西洋生命灵数",
-        "你一生的核心课题数是【主命数 " + num.life_path + "】；今年主题是【流年灵数 " + num.personal_year + "】。",
-        "主命数代表你这辈子的天赋与课题；流年灵数提示这一年适合做哪类事、往哪个方向使力。");
+        "主命数 "+num.life_path+"（五行"+lpE+"）——"+num.meaning+"；"+num.year+" 年流年灵数 "+num.personal_year+"（五行"+pyE+"）。",
+        "主命数五行"+lpE+rel5(lpE)+"，天赋航道是「"+num.meaning.split("、")[0]+"」；今年灵数"+pyE+rel5(pyE)+"，"+
+        (isFav(pyE)?"年度主题与命局同向，适合把这类事往前推":"年度主题与命局相左，宜稳守、别强推")+"。"+sysTone("生命灵数"));
     }
-    if (r.vimshottari) { var vim = r.vimshottari, cur = vim.current;
+
+    if(r.vimshottari){ var vim=r.vimshottari, vc=vim.current;
+      var ve=VIM_ELEM[vc.planet]||"—";
       put("Vimshottari",
-        "吠陀体系里，你当前正走「" + cur.planet + "」大运（约 " + cur.start_age + "–" + cur.end_age + " 岁），这股能量偏【" + cur.nature + "】。",
-        "当吠陀大运和八字大运、紫微大限「三轨同向」时，就是人生关键转折窗口；同向则加力，相左则以东方命理为主、吠陀作参考。");
+        "月亮宿第 "+vim.moon_nakshatra+" 宿（月黄经 "+vim.moon_lon+"°），当前行「"+vc.planet+"」大运 "+vc.start_age+"–"+vc.end_age+" 岁，五行"+ve+"、性"+vc.nature+"。",
+        "「"+vc.planet+"」运五行"+ve+rel5(ve)+"，"+(vc.nature==="吉"?"吉星运，顺境里也别松风控":vc.nature==="凶"?"凶星运，以夯实、避锋为主":"中性运，跟着东方大运定进退")+
+        "；与八字「"+curGZ+"」运"+(curFav?"同属偏顺，可把关键动作集中在这几年":"一顺一守，重大动作先小步试")+"。下次换运约在 "+((vim.list&&vim.list[0])?vim.list[0].start_age+" 岁":"—")+" 前后，交运年多留意。");
     }
-    if (r.fengshui) { var feng = r.fengshui;
-      var favDirs = feng.align_dirs.length ? feng.align_dirs.join("、") : (feng.favorable.length ? feng.favorable[0].dir : "吉方");
+
+    if(r.fengshui){ var feng=r.fengshui;
+      var fav0=feng.favorable||[], align=feng.align_dirs||[];
+      var ysElems=(ys&&ys.elements)||[];
+      var matchDirs=fav0.filter(function(f){return ysElems.indexOf(f.elem)>=0;}).map(function(f){return f.star+"·"+f.dir+"("+f.elem+")";});
       put("玄空飞星",
-        "你的吉利方位是【" + favDirs + "】（命卦" + (feng.trigram || "—") + "·" + (feng.group || "—") + "）。",
-        "把睡床、书桌朝这个方向摆，会更顺；但风水只是环境助缘，关键还是你自己的选择与努力。");
+        "命卦"+feng.trigram+"（"+feng.group+"、卦气"+feng.elem+"），四吉方："+fav0.map(function(f){return f.star+"·"+f.dir;}).join("、")+"；当前"+feng.period+"运 "+feng.period_star+"（"+feng.period_years+"）。",
+        "把用神五行"+(ysElems.join("/")||"—")+"与四吉方对照："+(matchDirs.length?"同气可用的是 "+matchDirs.join("、")+"，睡床书桌优先朝这几方；":"四吉方与用神不同气，以八宅吉方为主、用神五行为辅；")+
+        (align.length?"系统另标出与用神同气的方位："+align.join("、")+"；":"")+"九运旺星属火"+rel5("火")+"，"+(isFav("火")?"乘旺气、顺势易成":"宜借势而不硬抗")+"。风水只是环境助缘，不替代决策。");
     }
-    if (r.humandesign) { var hd = r.humandesign;
+
+    if(r.humandesign){ var hd=r.humandesign;
+      var hdWay=hd.type.indexOf("Generator")>=0?"荐骨有定义，做决定先等身体的 YES/NO，别靠脑内推演硬选；"
+        :hd.type.indexOf("Manifestor")>=0?"喉咙与动力相连，行动前先告知相关人，能省掉大半阻力；"
+        :hd.type.indexOf("Reflector")>=0?"九中心全开放，重大决定等满一个月相周期再定；"
+        :"荐骨未定义，别用「拼命做」换存在感，等被邀请再出手；";
       put("人类图",
-        "你是「" + (hd.type || "—") + "」型人——你的内在权威是「" + (hd.authority || "—") + "」，人生策略是「" + (hd.strategy || "—") + "」。",
-        "做重大决定别急着冲，等身体/内在给你「信号」再动；硬模仿别人的节奏，容易内耗。和八字喜忌互参着看。");
+        "「"+hd.type+"」型，"+hd.n_defined+" 个中心有定义（"+hd.defined_centers.join("、")+"），内在权威「"+hd.authority+"」，Profile "+hd.profile+"。",
+        "策略是「"+hd.strategy+"」；类型五行"+hd.elem+rel5(hd.elem)+"。"+hdWay+
+        "眼下整体「"+win+"」，"+(win.indexOf("防守")>=0||win.indexOf("稳")>=0?"更印证先等信号、少主动出击":"可把识别到的机会落到行动上")+"。");
     }
-    if (r.transits) { var tr = r.transits;
-      var asp = tr.list.length ? tr.list.map(function (t) { return t.planet + t.aspect; }).join("、") : "无明显强相位";
+
+    if(r.transits){ var tr=r.transits;
+      var tGood=tr.list.filter(function(t){return ["三合","六合","合相"].indexOf(t.aspect)>=0&&["木","金","日"].indexOf(t.planet)>=0;});
+      var tBad=tr.list.filter(function(t){return ["刑","冲"].indexOf(t.aspect)>=0;});
       put("西洋行进",
-        "今年天上星体在你命盘触发了【" + asp + "】。",
-        "木星吉相位利机遇、土星考验相位宜夯实基础；太阳回归年（生日前后）是能量重启点。它把流年事件定得更准，和八字流年互参。");
+        tr.year+" 年行进相位："+(tr.list.length?tr.list.map(function(t){return t.planet+t.aspect;}).join("、"):"无明显强相位")+(tr.solar_return?"；正值太阳回归":"")+"。",
+        (tGood.length?"吉相位 "+tGood.map(function(t){return t.planet+t.aspect;}).join("、")+" 主机会与助力，可把握；":"暂无明显吉相位，机会靠自己造；")+
+        (tBad.length?"考验相位 "+tBad.map(function(t){return t.planet+t.aspect;}).join("、")+" 主压力与反复，宜夯实；":"")+
+        "与八字流年及「"+win+"」合看，"+(tBad.length>tGood.length?"今年偏守":"今年可按窗口推进")+"。"+sysTone("西洋行进"));
     }
-    if (r.qimen) { var qm = r.qimen;
-      var jm = qm.jimen.length ? qm.jimen.map(function (j) { return j.door + "门·" + j.dir; }).join("、") : "此盘吉门不显";
+
+    if(r.qimen){ var qm=r.qimen;
+      var j0=qm.jimen[0]||null;
       put("奇门遁甲",
-        "办大事可以挑【" + jm + "】，以及【" + (qm.jishi ? qm.jishi : "另择时辰") + "】。",
-        "它给你「好时空」的参考——重大决定选个吉门方位、吉时更稳；但别只看这个，综合各体系判断更靠谱。");
+        (qm.yin?"阴遁":"阳遁")+qm.ju+"局（"+qm.yuan+"元），值符「"+qm.zhifu_star+"」星、值使「"+qm.zhishi_door+"」门；三吉门："+
+          (qm.jimen.length?qm.jimen.map(function(j){return j.door+"门·"+j.dir+"（"+j.quality+"）";}).join("、"):"本盘不显")+"。",
+        "按门宫生克逐个筛过："+(j0?"本盘最可用的是「"+j0.door+"」门·"+j0.dir+"（"+j0.quality+"）"+(qm.best_door?"，即首选方位":""):"三吉门皆受制")+
+        "；"+(qm.jishi?"出生时辰「"+qm.jishi+"」本身即吉时":"本命时辰非吉时，办大事另择")+"。结合日主"+de+"，办签约、谈判、就医这类事优先照此方位走，别只当成通用吉利话。");
     }
-    if (r.liuren) { var lr = r.liuren;
-      var faTone = lr.liuFav > 0 ? "顺、宜主动" : (lr.liuFav < 0 ? "逆、宜谨慎" : "平、宜观势");
+
+    if(r.liuren){ var lr=r.liuren;
+      var faXi=xiSet.indexOf(lr.faYong)>=0, faJi=jiSet.indexOf(lr.faYong)>=0;
+      var sc=lr.sanChuan||[];
       put("六壬神课",
-        "你处理人事/应期的风格偏「" + lr.faYong + "」——整体气场【" + faTone + "】。",
-        "遇到人际纠结或「什么时候出手」拿不准时，多看重时机与细节；它和奇门互补，专攻人事应期。");
+        "月将「"+lr.yueJiang+"」加占时「"+lr.zhanShi+"」，初传「"+lr.chu+"」，三传 "+sc.map(function(s){return s.zhi+"("+s.sixkin+")";}).join("→")+"，发用「"+lr.faYong+"」，贵人在"+lr.guiRen+"。",
+        "发用十神「"+lr.faYong+"」"+(faXi?"正落在你的用神集里，人事上宜主动推进、可借他人之力":faJi?"落在忌神集里，人事上宜守、别被人情或口头承诺带着走":"不在喜忌两端，按中性处理、看现实反馈")+
+        "；三传由"+(sc[0]?sc[0].zhi:"—")+"起、到"+(sc.length?sc[sc.length-1].zhi:"—")+"收，事情多半按「"+sc.map(function(s){return s.sixkin;}).join("→")+"」的节奏演变，整体气场"+(lr.liuFav>0?"偏顺":lr.liuFav<0?"偏逆":"平")+"。");
     }
-    if (r.tarot) { var tar = r.tarot;
+
+    if(r.tarot){ var tar=r.tarot;
       put("塔罗牌阵",
-        "你的人生课题牌是「" + (tar.lesson.name || "—") + "」——这一生要修炼的是：" + tar.lesson.theme + "。",
-        "它和你的日主（" + tar.dayElem + "）关系是【" + (tar.lesson.rel || "—") + "】，相当于给你加了层原型 buff；可作决策参考，不纳入硬命理加权。");
+        "人生课题牌「"+tar.lesson.name+"」（元素"+tar.lesson.elem+"），主题："+tar.lesson.theme+"；与日主"+tar.dayElem+"的关系是【"+tar.lesson.rel+"】。",
+        "牌的元素"+tar.lesson.elem+rel5(tar.lesson.elem)+"，"+(tar.lesson.rel==="生扶"?"与命局同向，可把它当顺势修炼的抓手":tar.lesson.rel==="克泄"?"与命局相左，是这辈子要反复磨的功课":"与命局中和，作中性参照")+
+        "；当前「"+curGZ+"」运"+(curFav?"偏顺，适合主动面对这个课题":"偏守，先在这个课题上补课")+"。塔罗只作原型参考，不进硬加权。");
     }
     return A;
   }
@@ -12186,7 +12402,7 @@
       elem_data: elem_data,
       mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail, action_playbook: action_playbook,
       past_inference: past_inf, year_focus: year_focus,
-      dim_advice: build_dim_advice({ bazi: b, ziwei: z, yijing: yj, tieban: tb, mingge: mingge, xiyao: xiyao, shengxiao: sx, qizheng: qz, numerology: num, vimshottari: vim, fengshui: feng, humandesign: hd, transits: tr, qimen: qm, liuren: lr, tarot: tar }),
+      dim_advice: build_dim_advice({ bazi: b, ziwei: z, yijing: yj, tieban: tb, mingge: mingge, xiyao: xiyao, shengxiao: sx, qizheng: qz, numerology: num, vimshottari: vim, fengshui: feng, humandesign: hd, transits: tr, qimen: qm, liuren: lr, tarot: tar, cv: cv, yongshen: yongshen, action_playbook: action_playbook, liunian: liu, geo: geo, face: faceSig, palm: palmSig }),
       face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
       palm: palmSig ? { signals: palmSig, obs: meta.palmObs, px: meta.palmPx, img: meta.palmImg } : null
     };
@@ -12911,7 +13127,7 @@
     H.push('<div class="ov-tip"><b>💡 一句话看懂你的人生格局：</b>' + esc(lg.overall_plain) + '</div>');
     // 优势 / 留意 双卡
     H.push('<div class="ov-grid">');
-    H.push('<div class="ov-card"><h3>✅ 你的优势领域</h3><ul class="tips">');
+    H.push('<div class="ov-card"><h3>' + (lg.strengths.length === 1 && lg.strengths[0].indexOf("七维里没有") >= 0 ? "📊 整体格局（暂无突出长板）" : "✅ 你的优势领域") + '</h3><ul class="tips">');
     lg.strengths.forEach(function (s) { H.push('<li>' + esc(s) + '</li>'); });
     H.push('</ul></div>');
     H.push('<div class="ov-card"><h3>⚠️ 需留意的方面</h3><ul class="tips">');
