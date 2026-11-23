@@ -87,6 +87,7 @@
     <div class="card">
       {% if error %}<div class="err">{{error}}</div>{% endif %}
       <form method="post" action="/analyze">
+        <input type="hidden" name="csrf" value="{{csrf}}">
         <label>出生日期（阳历）</label>
         <div class="row">
           <div><input name="year" type="number" placeholder="年" value="1990" required></div>

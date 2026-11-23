@@ -3,6 +3,7 @@
 命宫置于正上方，顺时针排列十二宫；三方四正（命/财/官/迁）高亮；
 主星、辅星、四化落宫分别着色；中心显示五行局/紫微/命宫。
 """
+import html
 import math
 from . import constants as C
 
@@ -16,6 +17,11 @@ R_DOT = 250     # 宫位节点半径
 def _pt(r, deg):
     t = math.radians(deg)
     return (CX + r * math.cos(t), CY + r * math.sin(t))
+
+
+def _x(v):
+    """SVG 文本节点转义：模板以 |safe 输出前先转义动态文本，防止标签/脚本注入。"""
+    return html.escape(str(v), quote=True)
 
 
 def build_ziwei_svg(ziwei: dict) -> str:
@@ -46,11 +52,11 @@ def build_ziwei_svg(ziwei: dict) -> str:
         fw = "bold" if hl else "normal"
         parts.append(
             f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" '
-            f'font-size="13" font-weight="{fw}" fill="{name_color}">{p["palace"]}</text>'
+            f'font-size="13" font-weight="{fw}" fill="{name_color}">{_x(p["palace"])}</text>'
         )
         zx, zy = _pt(R_LABEL - 15, deg)
         parts.append(
-            f'<text x="{zx:.1f}" y="{zy:.1f}" text-anchor="middle" font-size="10" fill="#6b7785">{p["zhi"]}</text>'
+            f'<text x="{zx:.1f}" y="{zy:.1f}" text-anchor="middle" font-size="10" fill="#6b7785">{_x(p["zhi"])}</text>'
         )
         # 高亮节点
         dx, dy = _pt(R_DOT, deg)
@@ -66,14 +72,14 @@ def build_ziwei_svg(ziwei: dict) -> str:
             fill = "#2b5a8a"
             parts.append(
                 f'<text x="{mx:.1f}" y="{my:.1f}" text-anchor="middle" font-size="12" '
-                f'font-weight="bold" fill="{fill}">{star_text}</text>'
+                f'font-weight="bold" fill="{fill}">{_x(star_text)}</text>'
             )
             # 四化后缀
             sihua_suffix = " ".join(f"({sihua_map[s]})" for s in stars if s in sihua_map)
             if sihua_suffix:
                 sx, sy = _pt(R_DOT - 26, deg + 6)
                 parts.append(
-                    f'<text x="{sx:.1f}" y="{sy:.1f}" text-anchor="middle" font-size="9" fill="#c0392b">{sihua_suffix}</text>'
+                    f'<text x="{sx:.1f}" y="{sy:.1f}" text-anchor="middle" font-size="9" fill="#c0392b">{_x(sihua_suffix)}</text>'
                 )
         else:
             parts.append(
@@ -85,15 +91,15 @@ def build_ziwei_svg(ziwei: dict) -> str:
         if fu:
             fx, fy = _pt(R_FU, deg)
             parts.append(
-                f'<text x="{fx:.1f}" y="{fy:.1f}" text-anchor="middle" font-size="9.5" fill="#6b7785">{" ".join(fu)}</text>'
+                f'<text x="{fx:.1f}" y="{fy:.1f}" text-anchor="middle" font-size="9.5" fill="#6b7785">{_x(" ".join(fu))}</text>'
             )
 
     # 中心信息
     parts.append(f'<text x="{CX}" y="{CY-44}" text-anchor="middle" font-size="13" font-weight="bold" fill="#8a5a2b">紫微斗数</text>')
-    parts.append(f'<text x="{CX}" y="{CY-22}" text-anchor="middle" font-size="12" fill="#1f2733">命宫 {ziwei["mingong_gz"]}</text>')
-    parts.append(f'<text x="{CX}" y="{CY}" text-anchor="middle" font-size="12" fill="#1f2733">{ziwei["ju"]}</text>')
-    parts.append(f'<text x="{CX}" y="{CY+22}" text-anchor="middle" font-size="12" fill="#1f2733">紫微在 {ziwei["ziwei_zhi"]}</text>')
-    parts.append(f'<text x="{CX}" y="{CY+44}" text-anchor="middle" font-size="11" fill="#6b7785">命宫主星 {ziwei["main_star"]}</text>')
+    parts.append(f'<text x="{CX}" y="{CY-22}" text-anchor="middle" font-size="12" fill="#1f2733">命宫 {_x(ziwei["mingong_gz"])}</text>')
+    parts.append(f'<text x="{CX}" y="{CY}" text-anchor="middle" font-size="12" fill="#1f2733">{_x(ziwei["ju"])}</text>')
+    parts.append(f'<text x="{CX}" y="{CY+22}" text-anchor="middle" font-size="12" fill="#1f2733">紫微在 {_x(ziwei["ziwei_zhi"])}</text>')
+    parts.append(f'<text x="{CX}" y="{CY+44}" text-anchor="middle" font-size="11" fill="#6b7785">命宫主星 {_x(ziwei["main_star"])}</text>')
 
     # 图例
     parts.append(f'<text x="{CX}" y="600" text-anchor="middle" font-size="11" fill="#6b7785">○ 棕圈=三方四正（命/财/官/迁）｜ 蓝字=主星 灰字=辅星 红()=生年四化</text>')
@@ -150,14 +156,14 @@ def fortune_trend_svg(liunian: dict) -> str:
         col = cls_color.get(r["cls"], "#9a6b00")
         parts.append(
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4.5" fill="{col}">'
-            f'<title>{r["year"]} {r["gz"]}｜{r["grade"]}（评分 {r["score"]}）</title></circle>'
+            f'<title>{_x(r["year"])} {_x(r["gz"])}｜{_x(r["grade"])}（评分 {_x(r["score"])}）</title></circle>'
         )
         if r["is_current"]:
             parts.append(f'<text x="{x:.1f}" y="{y-11:.1f}" text-anchor="middle" font-size="11" font-weight="bold" fill="#8a5a2b">今</text>')
     # x 轴年份标签
     for i, r in enumerate(rows):
         x = x_of(i)
-        parts.append(f'<text x="{x:.1f}" y="{pad_t+plot_h+16:.1f}" text-anchor="middle" font-size="10" fill="#6b7785">{str(r["year"])[2:]}</text>')
+        parts.append(f'<text x="{x:.1f}" y="{pad_t+plot_h+16:.1f}" text-anchor="middle" font-size="10" fill="#6b7785">{_x(str(r["year"])[2:])}</text>')
     # 图例
     parts.append(f'<text x="{pad_l+plot_w}" y="{pad_t-4:.1f}" text-anchor="end" font-size="10" fill="#9aa4af">绿=吉 黄=平 红=凶 · 数值=综合评分</text>')
     parts.append('</svg>')

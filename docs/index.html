@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 本页为纯离线单文件：允许内联脚本/样式（页面自身必需），但彻底禁掉一切网络连接、
+     插件对象、iframe 嵌套、base 劫持与表单外发，防止将来被注入的代码把生辰数据传出去。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>天命系统 · 录入与报告</title>
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IuWkqeWRveezu+e7nyI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNDAlIiByPSI3NSUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMWMyMjMzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTUlIiBzdG9wLWNvbG9yPSIjMGMwZjE4Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA0MDUwYSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmRlN2E4Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNDIlIiBzdG9wLWNvbG9yPSIjZTRiODVhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzljNmEyNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0idGFpamkiIGN4PSI1MCUiIGN5PSIzNiUiIHI9IjY4JSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmZGU3YTgiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYzg5MjJmIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIblupUgLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMjIiIGZpbGw9InVybCgjYmcpIi8+CiAgPCEtLSDlj4zph5HlpJbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMTkiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnb2xkKSIgc3Ryb2tlLXdpZHRoPSI2Ii8+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnb2xkKSIgc3Ryb2tlLW9wYWNpdHk9Ii41NSIgc3Ryb2tlLXdpZHRoPSIxLjYiLz4KICA8IS0tIOWFq+WNpuWIhumalOe7hueOryArIOmbt+e6ueeCuSAtLT4KICA8Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2dvbGQpIiBzdHJva2Utb3BhY2l0eT0iLjM1IiBzdHJva2Utd2lkdGg9IjEuMiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjEyOCIgcj0iMTAwIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ29sZCkiIHN0cm9rZS1vcGFjaXR5PSIuNSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtZGFzaGFycmF5PSIxLjUgNyIvPgoKICA8IS0tIOWFq+WNpu+8iOWFiOWkqSDCtyDph5HniLvvvIkgLS0+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDQ1IDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogIDwvZz4KICA8ZyB0cmFuc2Zvcm09InJvdGF0ZSg5MCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSI1MCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICA8L2c+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMTM1IDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDE4MCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iMzgiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDIyNSAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSI1MCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICA8L2c+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMjcwIDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDMxNSAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSI1MCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogIDwvZz4KCiAgPCEtLSDlpKrmnoHvvIjph5Hpu5HvvIkgLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSI0NiIgZmlsbD0idXJsKCN0YWlqaSkiLz4KICA8cGF0aCBkPSJNMTI4IDgyIGE0NiA0NiAwIDAgMSAwIDkyIGEyMyAyMyAwIDAgMSAwIC00NiBhMjMgMjMgMCAwIDAgMCAtNDYgeiIgZmlsbD0iIzBiMGUxNiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjEwNSIgcj0iOCIgZmlsbD0iIzBiMGUxNiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjE1MSIgcj0iOCIgZmlsbD0idXJsKCN0YWlqaSkiLz4KICA8Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjQ2IiBmaWxsPSJub25lIiBzdHJva2U9IiMwYjBlMTYiIHN0cm9rZS1vcGFjaXR5PSIuNCIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPC9zdmc+" type="image/svg+xml">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IuWkqeWRveezu+e7nyI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNDAlIiByPSI3NSUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMWMyMjMzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTUlIiBzdG9wLWNvbG9yPSIjMGMwZjE4Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA0MDUwYSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZmRlN2E4Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNDIlIiBzdG9wLWNvbG9yPSIjZTRiODVhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzljNmEyNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0idGFpamkiIGN4PSI1MCUiIGN5PSIzNiUiIHI9IjY4JSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmZGU3YTgiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjYzg5MjJmIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIblupUgLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMjIiIGZpbGw9InVybCgjYmcpIi8+CiAgPCEtLSDlj4zph5HlpJbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMTkiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnb2xkKSIgc3Ryb2tlLXdpZHRoPSI2Ii8+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnb2xkKSIgc3Ryb2tlLW9wYWNpdHk9Ii41NSIgc3Ryb2tlLXdpZHRoPSIxLjYiLz4KICA8IS0tIOWFq+WNpuWIhumalOe7hueOryArIOmbt+e6ueeCuSAtLT4KICA8Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2dvbGQpIiBzdHJva2Utb3BhY2l0eT0iLjM1IiBzdHJva2Utd2lkdGg9IjEuMiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjEyOCIgcj0iMTAwIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZ29sZCkiIHN0cm9rZS1vcGFjaXR5PSIuNSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtZGFzaGFycmF5PSIxLjUgNyIvPgoKICA8IS0tIOWFq+WNpu+8iOWFiOWkqSDCtyDph5HniLvvvIkgLS0+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDQ1IDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogIDwvZz4KICA8ZyB0cmFuc2Zvcm09InJvdGF0ZSg5MCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSI1MCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICA8L2c+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMTM1IDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDE4MCAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iMzgiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDIyNSAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSI1MCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICA8L2c+CiAgPGcgdHJhbnNmb3JtPSJyb3RhdGUoMjcwIDEyOCAxMjgpIj4KICAgIDxyZWN0IHg9IjExMyIgeT0iMjYiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+PHJlY3QgeD0iMTMxIiB5PSIyNiIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz4KICAgIDxyZWN0IHg9IjExMyIgeT0iMzgiIHdpZHRoPSIzMCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPjxyZWN0IHg9IjEzMSIgeT0iNTAiIHdpZHRoPSIxMyIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSJ1cmwoI2dvbGQpIi8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0icm90YXRlKDMxNSAxMjggMTI4KSI+CiAgICA8cmVjdCB4PSIxMTMiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSIzOCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjM4IiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogICAgPHJlY3QgeD0iMTEzIiB5PSI1MCIgd2lkdGg9IjEzIiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZ29sZCkiLz48cmVjdCB4PSIxMzEiIHk9IjUwIiB3aWR0aD0iMTMiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0idXJsKCNnb2xkKSIvPgogIDwvZz4KCiAgPCEtLSDlpKrmnoHvvIjph5Hpu5HvvIkgLS0+CiAgPGNpcmNsZSBjeD0iMTI4IiBjeT0iMTI4IiByPSI0NiIgZmlsbD0idXJsKCN0YWlqaSkiLz4KICA8cGF0aCBkPSJNMTI4IDgyIGE0NiA0NiAwIDAgMSAwIDkyIGEyMyAyMyAwIDAgMSAwIC00NiBhMjMgMjMgMCAwIDAgMCAtNDYgeiIgZmlsbD0iIzBiMGUxNiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjEwNSIgcj0iOCIgZmlsbD0iIzBiMGUxNiIvPgogIDxjaXJjbGUgY3g9IjEyOCIgY3k9IjE1MSIgcj0iOCIgZmlsbD0idXJsKCN0YWlqaSkiLz4KICA8Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjQ2IiBmaWxsPSJub25lIiBzdHJva2U9IiMwYjBlMTYiIHN0cm9rZS1vcGFjaXR5PSIuNCIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPC9zdmc+">
@@ -9868,7 +9871,16 @@
   var WEST_ELEM = ["火","土","风","水","火","土","风","水","火","土","风","水"];
   function _west_elem_of_sign(i){ return {"火":"火","土":"土","风":"木","水":"水"}[WEST_ELEM[i]]; }
   var CITY_LATITUDE = {"北京":39.90,"上海":31.23,"广州":23.13,"深圳":22.54,"杭州":30.27,"南京":32.06,"成都":30.66,"武汉":30.59,"西安":34.34,"重庆":29.56,"天津":39.13,"苏州":31.30,"郑州":34.75,"长沙":28.23,"沈阳":41.80,"大连":38.91,"青岛":36.07,"厦门":24.48,"福州":26.07,"昆明":25.04,"哈尔滨":45.80,"长春":43.82,"石家庄":38.04,"太原":37.87,"济南":36.65,"合肥":31.82,"南昌":28.68,"南宁":22.82,"贵阳":26.65,"兰州":36.06,"海口":20.04,"三亚":18.25,"拉萨":29.66,"乌鲁木齐":43.83,"呼和浩特":40.84,"银川":38.49,"西宁":36.62,"香港":22.32,"澳门":22.20,"台北":25.03,"东莞":23.02,"佛山":23.02,"无锡":31.49,"宁波":29.87,"温州":28.00};
-  function _city_lat(city){ return CITY_LATITUDE[city] != null ? CITY_LATITUDE[city] : 30.0; }
+  // 城市经纬度查表：只认「自身拥有的数字属性」，避免 "__proto__"/"constructor"/"toString"
+  // 等原型链键被当成合法城市，进而让经度变成对象、下游真太阳时计算得到 NaN 而崩溃。
+  function _lookup_city(dict, city, dflt){
+    if(typeof city!=="string" || !city) return dflt;
+    if(!Object.prototype.hasOwnProperty.call(dict, city)) return dflt;
+    var v=dict[city];
+    return (typeof v==="number" && isFinite(v)) ? v : dflt;
+  }
+  function _city_lon(city){ return _lookup_city(CITY_LONGITUDE, city, 120.0); }
+  function _city_lat(city){ return _lookup_city(CITY_LATITUDE, city, 30.0); }
   function _jd(y,m,d,hh){ if (m<=2){ y-=1; m+=12; } var A=Math.floor(y/100), B=2-A+Math.floor(A/4); if (y<1582) B=0; return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5+hh/24; }
   function _sun_lon(jd){ var n=jd-2451545.0; var L=280.460+0.9856474*n; var g=357.528+0.9856003*n; var gl=g*Math.PI/180; var lam=L+1.915*Math.sin(gl)+0.020*Math.sin(2*gl); return ((lam%360)+360)%360; }
   // 月球黄经：补上出差(Evection)、二均差(Variation)等主项，误差从 ±2° 降到约 ±0.3°。
@@ -9929,7 +9941,7 @@
     var out=[]; orbs.forEach(function(o){ if (Math.abs(d-o[0])<=o[2]) out.push(o[1]); }); return out;
   }
   function compute_xiyao(solar, birthplace){
-    var lon = CITY_LONGITUDE[birthplace] != null ? CITY_LONGITUDE[birthplace] : 120.0;
+    var lon = _city_lon(birthplace);
     var lat = _city_lat(birthplace);
     var y=solar.getFullYear(), mo=solar.getMonth()+1, d=solar.getDate(), hh=solar.getHours()+solar.getMinutes()/60;
     var jd=_jd(y,mo,d,hh);
@@ -12337,7 +12349,7 @@
   }
 
   function analyze(y, mo, d, h, mi, gender, birthplace, meta) {
-    var lon = CITY_LONGITUDE[birthplace] != null ? CITY_LONGITUDE[birthplace] : 120.0;
+    var lon = _city_lon(birthplace);
     var g = correct_to_solar(y, mo, d, h, mi, lon);
     var solar = g.solar;
     var sc_before = _hour_to_shichen(h), sc_after = _hour_to_shichen(solar.getHours());
@@ -12564,14 +12576,21 @@
     document.getElementById("toneBox").innerHTML = "【自动·像素气色】当前「" + name + "」照片：主色偏 <b>" + tone.tone + "</b>，明亮度 " + (tone.brightness * 100).toFixed(0) + "%。如需调整可重新拍照 / 上传。";
   }
   var camStream = null;
+  function stopCam(){
+    if(camStream){ camStream.getTracks().forEach(function(t){ t.stop(); }); camStream=null; }
+    var v=document.getElementById("cam"); if(v) v.srcObject=null;
+    var b=document.getElementById("btnCamOn"); if(b) b.textContent="开启摄像头";
+  }
   document.getElementById("btnCamOn").addEventListener("click", function () {
-    if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; this.textContent = "开启摄像头"; return; }
+    if (camStream) { stopCam(); return; }
     var v = document.getElementById("cam"), self = this;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("当前浏览器不支持摄像头，请改用「上传照片」。"); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false }).then(function (s) {
       camStream = s; v.srcObject = s; self.textContent = "关闭摄像头";
     }).catch(function (e) { alert("无法开启摄像头：" + (e.message || e) + "（可改用「上传照片」）"); });
   });
+  // 页面关闭 / 切后台时主动释放摄像头，避免指示灯常亮与隐私泄露
+  if(window.addEventListener) window.addEventListener("pagehide", stopCam);
   document.getElementById("btnCap").addEventListener("click", function () {
     var v = document.getElementById("cam"), c = document.getElementById("camCanvas");
     if (!v.videoWidth) { alert("请先开启摄像头。"); return; }
@@ -12580,12 +12599,23 @@
   });
   document.getElementById("fileIn").addEventListener("change", function (e) {
     var f = e.target.files && e.target.files[0]; if (!f) return;
-    var img = new Image();
+    // 只收常见位图：排除 SVG（可声明超大画布造成内存 DoS）与任意非图片文件；限制体积。
+    if(!/^image\/(jpeg|png|webp|gif|bmp)$/.test(f.type||"")){ alert("仅支持 JPG / PNG / WebP / GIF / BMP 图片，请重新选择。"); e.target.value=""; return; }
+    if(!(f.size>0) || f.size>12*1024*1024){ alert("图片请控制在 12MB 以内。"); e.target.value=""; return; }
+    var img = new Image(), objUrl = URL.createObjectURL(f), released=false;
+    function release(){ if(!released){ released=true; URL.revokeObjectURL(objUrl); } }
     img.onload = function () {
+      release();
+      // 限制宽高与总像素，避免损坏/恶意图片让 canvas 分配巨量内存
+      if(!img.width || !img.height || img.width>8000 || img.height>8000 || img.width*img.height>16000000){
+        alert("图片尺寸过大（建议不超过 4000×4000），已跳过。"); return;
+      }
       var c = document.getElementById("camCanvas"); c.width = img.width; c.height = img.height;
       c.getContext("2d").drawImage(img, 0, 0); ingestCanvas(c);
+      img.src="";
     };
-    img.src = URL.createObjectURL(f);
+    img.onerror = function(){ release(); alert("这张图片无法读取，请换一张。"); };
+    img.src = objUrl;
   });
   function val(id) { var e = document.getElementById(id); return e ? e.value : ""; }
   function collectFace() {
@@ -12610,6 +12640,10 @@
   }
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  // 照片 src 只允许浏览器本地 canvas 生成的图片 dataURL，杜绝任意 URL / 属性注入
+  function safeDataImg(u){
+    return (typeof u==="string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) ? u : "";
+  }
   function gz(g){ return g[0]+g[1]; }
   function clsOf(g){ return g==="吉"||g==="平偏吉"?"hi":(g==="平"?"mid":"lo"); }
 
@@ -12706,11 +12740,13 @@
       H.push('<div class="note">相学为<b>辅助维度</b>：照片「气色五行」由浏览器<b>本地像素</b>自动判定（红=火 / 白=金 / 青=木 / 黑=水 / 黄=土，照片绝不上传），面相/手相特征由您对照照片勾选；所有信号须与命理四柱/紫微/易/铁板<b>互参</b>，不单独作断，亦非医疗诊断。</div>');
       H.push('<div class="two">');
       if(ctx.face){
-        H.push('<div><h3>面相照片</h3>'+(ctx.face.img?'<img src="'+ctx.face.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
+        var fimg=safeDataImg(ctx.face.img);
+        H.push('<div><h3>面相照片</h3>'+(fimg?'<img src="'+fimg+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
         H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.face.px?('自动气色：'+ctx.face.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.face.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       if(ctx.palm){
-        H.push('<div><h3>手相照片</h3>'+(ctx.palm.img?'<img src="'+ctx.palm.img+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
+        var pimg=safeDataImg(ctx.palm.img);
+        H.push('<div><h3>手相照片</h3>'+(pimg?'<img src="'+pimg+'" style="max-width:100%;border:1px solid var(--line);border-radius:10px">':'<div class="note">（未拍照，仅按勾选特征）</div>'));
         H.push('<div class="tonebox" style="margin-top:8px">'+(ctx.palm.px?('自动气色：'+ctx.palm.px.tone+'（红=火/白=金/青=木/黑=水/黄=土），明亮度 '+(ctx.palm.px.brightness*100).toFixed(0)+'% —— 浏览器本地像素判定，照片未上传'):'未采集照片（无自动气色，可按勾选特征推算）')+'</div></div>');
       }
       H.push('</div>');
@@ -13299,22 +13335,31 @@
   }
   function pick(m,sys){ for(var i=0;i<m.votes.length;i++) if(m.votes[i].system===sys) return [m.votes[i].text,m.votes[i].level]; return null; }
 
+  // 统一 CSV 单元格编码：引号成对、逗号/换行不破列；对可能触发公式的前缀加单引号，
+  // 防止文本被 Excel / WPS 当作 =HYPERLINK / +cmd / @SUM 执行（纵深防御）。
+  function csvCell(v){
+    var s=String(v==null?"":v);
+    if(/^[ \t\r\n]*[=+\-@\t\r]/.test(s) && !/^[ \t\r\n]*[+-]?\d+(\.\d+)?[ \t\r\n]*$/.test(s)) s="'"+s;
+    return '"'+s.replace(/"/g,'""')+'"';
+  }
   function exportCSV(ctx){
     var rows=(ctx.year_focus ? ctx.year_focus.rows : ctx.liunian.rows);
     var header=["年份","年龄","流年干支","纳音","流年十神","大运","大运十神","流年命宫","流年四化","评分","等级","建议","分维指导"];
-    var lines=[header.join(",")];
+    var lines=[header.map(csvCell).join(",")];
     rows.forEach(function(r){
       var sihuaTxt=Object.keys(r.sihua).map(function(k){return k+r.sihua[k];}).join(" ");
-      var advice=String(r.advice_long||r.advice).replace(/"/g,'""');
+      var advice=String(r.advice_long||r.advice||"");
       var cat=r.advice_cat||{};
       var catStr=Object.keys(cat).map(function(k){return k+"："+cat[k];}).join("；");
-      lines.push([r.year,r.age,gz(r.gz),r.nayin,r.shi_shen,(r.dayun_gz==="—"?"—":gz(r.dayun_gz)),r.dayun_shishen,r.flow_palace,sihuaTxt||"—",r.score,r.grade,'"'+advice+'"','"'+catStr.replace(/"/g,'""')+'"'].join(","));
+      lines.push([r.year,r.age,gz(r.gz),r.nayin,r.shi_shen,(r.dayun_gz==="—"?"—":gz(r.dayun_gz)),r.dayun_shishen,r.flow_palace,sihuaTxt||"—",r.score,r.grade,advice,catStr].map(csvCell).join(","));
     });
     var csv="﻿"+lines.join("\r\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
     var url=URL.createObjectURL(blob);
     var a=document.createElement("a");
-    a.href=url; a.download="流年运势_"+ctx.birth_input.year+ctx.birth_input.month+ctx.birth_input.day+"_"+ctx.birth_input.gender+".csv";
+    a.href=url;
+    var bi=ctx.birth_input||{};
+    a.download=("流年运势_"+bi.year+bi.month+bi.day+"_"+bi.gender+".csv").replace(/[\\/:*?"<>|\r\n]/g,"_");
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(url);},1000);
   }
@@ -13322,7 +13367,9 @@
   document.getElementById("btnRun").addEventListener("click",function(){
     var err=document.getElementById("errBox"); err.innerHTML="";
     try{
-      var gender=document.getElementById("f_gender").value, city=document.getElementById("f_city").value;
+      var gender=document.getElementById("f_gender").value;
+      // 出生地是自由文本框：先归一化（去首尾空格、限长），下游查表与渲染仍各自做安全校验。
+      var city=String(document.getElementById("f_city").value||"").trim().slice(0,40);
       var meta=null, sy,smo,sd,sh,smi;
       if(calMode==="农历"){
         var ly=+document.getElementById("f_year").value;
@@ -13394,7 +13441,20 @@
   });
   // ---- 本地保存 ----
   var LS_KEY="mingli_saved_v1";
-  function getSaved(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||"[]");}catch(e){return [];} }
+  // 本地存档可能被旧版本、手工编辑或同源脚本写入异常结构；严格白名单校验，
+  // 避免 null / 非数组 / 缺字段导致页面加载时整段脚本崩溃（PoC 已复现）。
+  function getSaved(){
+    try{
+      var a=JSON.parse(localStorage.getItem(LS_KEY)||"[]");
+      if(!Array.isArray(a)) return [];
+      return a.filter(function(x){
+        return x && typeof x==="object" && !Array.isArray(x)
+          && typeof x.label==="string" && x.label.length<=200
+          && x.input && typeof x.input==="object" && !Array.isArray(x.input)
+          && (x.input.calendar==="阳历" || x.input.calendar==="农历");
+      }).slice(0,20);
+    }catch(e){ return []; }
+  }
   function setSaved(a){ try{localStorage.setItem(LS_KEY,JSON.stringify(a));}catch(e){} }
   function saveCurrent(ctx){
     var inp=ctx.birth_input;
@@ -13419,31 +13479,34 @@
         '<button class="btn ghost sm" data-del="'+i+'">删</button></div>';
     }).join("");
     box.querySelectorAll("[data-load]").forEach(function(b){ b.addEventListener("click",function(){
-      var r=list[+b.getAttribute("data-load")];
+      var r=list[+b.getAttribute("data-load")]; if(!r||!r.input) return;
       var inp=r.input;
+      function num(v,lo,hi,d){ var n=Number(v); return (isFinite(n)&&n>=lo&&n<=hi)?n:d; }
       calMode = inp.calendar;
       document.querySelectorAll("#f_cal button").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-cal")===inp.calendar); });
       applyCalMode();
       if(inp.calendar==="农历"){
-        document.getElementById("f_year").value=inp.ly;
-        document.getElementById("f_month").value=inp.lmo;
-        document.getElementById("f_day").value=inp.ld;
+        document.getElementById("f_year").value=num(inp.ly,1900,2100,1990);
+        document.getElementById("f_month").value=num(inp.lmo,1,12,4);
+        document.getElementById("f_day").value=num(inp.ld,1,30,15);
         document.getElementById("f_leap").checked=!!inp.lleap;
-        document.getElementById("f_shichen").value=(inp.lshichen||"子").replace("时","");
-        document.getElementById("f_minute").value=inp.smi;
+        var lsh=String(inp.lshichen||"子时").replace("时","");
+        document.getElementById("f_shichen").value=/^[子丑寅卯辰巳午未申酉戌亥]$/.test(lsh)?lsh:"子";
+        document.getElementById("f_minute").value=num(inp.smi,0,55,0);
       } else {
-        document.getElementById("f_year").value=inp.year;
-        document.getElementById("f_month").value=inp.month;
-        document.getElementById("f_day").value=inp.day;
-        document.getElementById("f_hour").value=inp.hour;
-        document.getElementById("f_minute").value=inp.minute;
+        document.getElementById("f_year").value=num(inp.year,1900,2100,1990);
+        document.getElementById("f_month").value=num(inp.month,1,12,1);
+        document.getElementById("f_day").value=num(inp.day,1,31,1);
+        document.getElementById("f_hour").value=num(inp.hour,0,23,12);
+        document.getElementById("f_minute").value=num(inp.minute,0,59,0);
       }
-      document.getElementById("f_gender").value=inp.gender;
-      document.getElementById("f_city").value=inp.birthplace;
+      document.getElementById("f_gender").value=(inp.gender==="女"?"女":"男");
+      document.getElementById("f_city").value=String(inp.birthplace||"北京").slice(0,40);
       scopeMode = inp.scope==="year" ? "year" : "life";
       document.querySelectorAll("#f_scope button").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-scope")===scopeMode); });
       applyScope();
-      if(scopeMode==="year" && inp.focus_year) fillFocusYears(+inp.focus_year);
+      var fy=num(inp.focus_year,1900,2200,0);
+      if(scopeMode==="year" && fy) fillFocusYears(fy);
       document.getElementById("btnRun").click();
     });});
     box.querySelectorAll("[data-del]").forEach(function(b){ b.addEventListener("click",function(){

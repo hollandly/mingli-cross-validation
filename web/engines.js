@@ -1352,7 +1352,10 @@
 
   // ============ 顶层分析 ============
   function analyze(y, mo, d, h, mi, gender, birthplace, meta) {
-    var lon = CITY_LONGITUDE[birthplace] != null ? CITY_LONGITUDE[birthplace] : 120.0;
+    // 安全查表：只认自身拥有的数字属性，避免 __proto__/constructor 等原型键让经度变成对象、真太阳时算出 NaN
+    var lon = (typeof birthplace==="string" && Object.prototype.hasOwnProperty.call(CITY_LONGITUDE, birthplace)
+      && typeof CITY_LONGITUDE[birthplace]==="number" && isFinite(CITY_LONGITUDE[birthplace]))
+      ? CITY_LONGITUDE[birthplace] : 120.0;
     var g = correct_to_solar(y, mo, d, h, mi, lon);
     var solar = g.solar;
     var sc_before = _hour_to_shichen(h), sc_after = _hour_to_shichen(solar.getHours());

@@ -12,3 +12,6 @@ Thumbs.db
 # Secrets (never commit)
 .env
 *.token
+
+# 本地账号库：含 pbkdf2 密码哈希与运行期生成的用户数据，绝不能入库
+data/

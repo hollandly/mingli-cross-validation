@@ -246,6 +246,8 @@ function exportJSON(){
   fd.set('minute', document.getElementById('inp-minute').value);
   fd.set('gender', document.getElementById('inp-gender').value);
   fd.set('birthplace', document.getElementById('inp-birthplace').value);
+  // csrf 为十六进制令牌，经模板自动转义后放进 JS 字符串
+  fd.set('csrf', '{{ csrf }}');
   fetch('/export_json', {method:'POST', body: fd})
     .then(r => r.json())
     .then(d => {

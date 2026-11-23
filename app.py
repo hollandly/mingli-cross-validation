@@ -139,6 +139,22 @@ def _require_login():
     return "username" in session  # 1 MB
 
 
+def _csrf_ok(data):
+    """校验表单 / JSON 中的 CSRF 令牌；用恒定时间比较避免时序侧信道。"""
+    token = data.get("csrf") if data else None
+    expected = session.get("csrf")
+    if not isinstance(token, str) or not isinstance(expected, str):
+        return False
+    return secrets.compare_digest(token, expected)
+
+
+def _index_ctx(error=None):
+    """首页渲染的公共上下文，保证校验失败回显时变量完整（含 csrf 与城市表）。"""
+    return dict(cities=list(C.CITY_LONGITUDE.keys()),
+                authed=_require_login(), role=session.get("role"),
+                username=session.get("username"), csrf=_csrf(), error=error)
+
+
 def _parse_birth(form):
     """校验并解析出生信息。失败抛出 ValueError（中文说明），由调用方捕获返回 400。"""
     try:
@@ -263,10 +279,7 @@ def _assemble_json(ctx):
 
 @app.route("/", methods=["GET"])
 def index():
-    csrf = _csrf()
-    return render_template("index.html", cities=list(C.CITY_LONGITUDE.keys()),
-                           authed=_require_login(), role=session.get("role"),
-                           username=session.get("username"), csrf=csrf)
+    return render_template("index.html", **_index_ctx())
 
 
 @app.route("/login", methods=["POST"])
@@ -289,6 +302,8 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    if not _csrf_ok(request.get_json(silent=True) or request.form):
+        return jsonify({"ok": False, "msg": "会话已过期，请刷新页面"}), 400
     session.clear()
     return jsonify({"ok": True})
 
@@ -317,11 +332,14 @@ def admin_change():
 def analyze():
     if not _require_login():
         return redirect("/")
+    if not _csrf_ok(request.form):
+        return render_template("index.html", **_index_ctx("会话已过期或请求来源不合法，请刷新页面后重试")), 400
     try:
         birth, gender, birthplace = _parse_birth(request.form)
     except Exception as e:
-        return render_template("index.html", error="出生日期/时间格式有误：" + str(e))
+        return render_template("index.html", **_index_ctx("出生日期/时间格式有误：" + str(e))), 400
     ctx = _report_context(birth, gender, birthplace)
+    ctx["csrf"] = _csrf()   # 报告页的「导出 JSON」也要带令牌
     return render_template("report.html", **ctx)
 
 
@@ -329,6 +347,8 @@ def analyze():
 def export_json():
     if not _require_login():
         return jsonify({"error": "请先登录"}), 401
+    if not _csrf_ok(request.form):
+        return jsonify({"error": "会话已过期或请求来源不合法，请刷新页面后重试"}), 400
     try:
         birth, gender, birthplace = _parse_birth(request.form)
     except Exception as e:
