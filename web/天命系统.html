@@ -202,6 +202,35 @@
   .section-h{font-size:14px;font-weight:600;color:var(--gold);border-bottom:2px solid var(--line);padding-bottom:5px;margin:0 0 8px;}
   /* 文本块防长串/外文术语溢出（连续干支、英文等不产生横向滚动） */
   .plain,.dim-tip,.ov-tip,.note,.tips li,.kv .v,.flag{overflow-wrap:anywhere;word-break:break-word;}
+  /* 单年运程报告 */
+  .yr-hero{text-align:center;padding:14px 12px;border-radius:12px;background:linear-gradient(180deg,#fff7e6,#fdeecb);border:1px solid #e9c878;margin-bottom:12px;}
+  .yr-hero .yh-year{font-size:24px;font-weight:800;color:#8a5a2b;letter-spacing:1px;}
+  .yr-hero .yh-gz{font-size:15px;color:#a9791f;margin-top:2px;}
+  .yr-hero .yh-tone{display:inline-block;margin-top:9px;padding:4px 14px;border-radius:20px;font-size:14px;font-weight:700;}
+  .ycard{border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:var(--paper2);}
+  .ycard .yc-h{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:5px;}
+  .ycard .yc-b{font-size:13px;line-height:1.8;color:#5a4a30;}
+  .ygrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:720px){.ygrid{grid-template-columns:1fr;}}
+  .ylight{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:9px;margin:7px 0;font-size:13px;line-height:1.75;}
+  .ylight .yl-n{flex:0 0 auto;font-weight:700;min-width:76px;}
+  .yl-g{background:#eef6f0;border:1px solid #cfe4d6;color:#1f5e37;}
+  .yl-a{background:#fbf3df;border:1px solid #ecd9a8;color:#8a6b00;}
+  .yl-r{background:#fbeee9;border:1px solid #eccabf;color:#a33c26;}
+  .ymonth{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
+  .ymonth span{padding:4px 10px;border-radius:8px;font-size:12.5px;font-weight:600;}
+  .ymonth .mg{background:#eef6f0;border:1px solid #cfe4d6;color:#1f7a3d;}
+  .ymonth .mr{background:#fbeee9;border:1px solid #eccabf;color:#b83b22;}
+  .yr-switch{margin-top:14px;padding:10px 12px;border-radius:10px;background:#f4ead3;border:1px solid #e6d4a8;font-size:13px;color:#7a6234;line-height:1.8;}
+  /* 测算范围切换按钮：窄屏也放得下 */
+  #f_scope{display:flex;flex-wrap:wrap;max-width:100%;}
+  #f_scope button{padding:9px 14px;font-size:14px;letter-spacing:.5px;}
+  @media(max-width:480px){
+    #f_scope button{flex:1 1 46%;padding:9px 6px;font-size:13px;letter-spacing:0;}
+    .yh-year{font-size:21px;}
+    .ylight{flex-wrap:wrap;}
+    .ylight .yl-n{min-width:0;flex:0 0 auto;}
+  }
   /* 手机端（≤480px）细调：避免横向溢出、提升可读性与触控 */
   @media(max-width:480px){
     .wrap{padding:12px 9px 52px;}
@@ -321,6 +350,19 @@
   <!-- 录入表单 -->
   <div class="card" id="formCard">
     <h2>录入出生信息</h2>
+    <div class="field" style="grid-column:1/-1">
+      <label>测算范围</label>
+      <div class="seg" id="f_scope">
+        <button type="button" data-scope="life" class="active">一生的完整运程</button>
+        <button type="button" data-scope="year">只看某一年</button>
+      </div>
+      <span class="calhint" id="scopeHint">「一生的完整运程」输出十七维全报告（性格、事业、婚姻、大运、逐年详批…）；「只看某一年」则聚焦所选年份的运势与可执行建议，篇幅更短、更适合手机阅读。</span>
+    </div>
+    <div class="field hidden" id="wrap_scope_year" style="grid-column:1/-1">
+      <label>要测算的年份</label>
+      <select id="f_focus_year"></select>
+      <span class="calhint">可选出生年份至其后 100 年内的任意一年（回看往年或预览未来均可），默认今年。所选年份会单独重算流年干支、太岁、大运与全年建议。</span>
+    </div>
     <div class="field" style="grid-column:1/-1">
       <label>历法（默认农历，更贴合传统生辰报法）</label>
       <div class="seg" id="f_cal">
@@ -11751,10 +11793,11 @@
     if (bazi.dayun.length) { var last = bazi.dayun[bazi.dayun.length - 1]; return [last.gz, last.step]; }
     return [null, 0];
   }
-  function compute_liunian(bazi, ziwei, birth, span_back, span_fwd) {
+  function compute_liunian(bazi, ziwei, birth, span_back, span_fwd, center_year) {
     span_back = span_back || 2; span_fwd = span_fwd || 8;
     var day_gan = bazi.day_master, xi_ji = _xi_ji_sets(bazi), xi_set = xi_ji[0], ji_set = xi_ji[1];
-    var now_year = new Date().getFullYear(), birth_year = birth.getFullYear();
+    // center_year：单年模式用它作「所测之年」并标记 is_current；不传则仍是今年（一生模式行为不变）
+    var now_year = center_year || new Date().getFullYear(), birth_year = birth.getFullYear();
     var yz0 = bazi.four_pillars.year.gz[1]; var animal0 = ZODIAC_ANIMALS[ZHI_INDEX[yz0]];
     var palaces = ziwei.palaces, zhi_palace_idx = {};
     palaces.forEach(function (p, i) { zhi_palace_idx[p.zhi] = i; });
@@ -11810,6 +11853,74 @@
       });
     }
     return { rows: rows, trend: rows.filter(function (r) { return r.is_current; })[0].summary, now_year: now_year };
+  }
+
+  // ============ 单年运程：以「所测之年」为中心，复用全部真实推演 ============
+  // 十神 / 命宫 / 太岁 的通俗释义（供单年报告把术语翻成日常话）
+  var YEAR_GOD_PLAIN = {
+    "正官": "规矩、责任与名分的事（考核、职位、规则）", "七杀": "压力、竞争与变动的事",
+    "正印": "学习、证照与贵人扶持的事", "偏印": "钻研、独处与冷门专长的事",
+    "食神": "才艺、作品与生活享受的事", "伤官": "表达、创意与口舌是非的事",
+    "正财": "稳定收入与踏实经营的事", "偏财": "机会财、人情往来与额外进账的事",
+    "比肩": "同辈合作与竞争的事", "劫财": "分账、争夺与破耗的事"
+  };
+  var YEAR_PALACE_PLAIN = {
+    "命宫": "你自己（状态、心态、整体气场）", "兄弟": "兄弟姐妹与同辈伙伴", "夫妻": "伴侣与亲密关系",
+    "子女": "子女、创作与下属", "财帛": "赚钱方式与现金流", "疾厄": "身体与作息",
+    "迁移": "外出、搬迁与外部环境", "交友": "朋友、同事与人脉", "官禄": "工作、事业与社会位置",
+    "田宅": "家宅、房产与家人", "福德": "心情、兴趣与精神生活", "父母": "长辈、上司与文书"
+  };
+  function _year_grade_plain(score, grade) {
+    if (score >= 1.2) return { tone: "动能偏强、机会较多", act: "可以主动争取，但也别在顺境里放松风控" };
+    if (score >= 0.3) return { tone: "稳中有进、大体顺遂", act: "适合把酝酿中的事往前推一步，重大变动仍要留退路" };
+    if (score > -0.3) return { tone: "起伏不大、以稳为主", act: "把现有摊子做扎实，不主动制造大变动" };
+    if (score > -1.2) return { tone: "牵绊较多、宜守不宜攻", act: "以避坑和降风险为主，重大决定放慢半拍" };
+    return { tone: "阻力偏大、宜低调蓄势", act: "尽量不做大额投入与重大承诺，先稳住、等窗口" };
+  }
+  function build_year_focus(bazi, ziwei, solar, cv, dayun_detail, year) {
+    // 前后各 2 年做走势参照；所选年份标为 is_current，供行动指南按该年重算
+    var liu = compute_liunian(bazi, ziwei, solar, 2, 2, year);
+    liu.rows.forEach(function (r) { r.transit_note = _year_transit_theme(solar, r.year); });
+    var row = null;
+    liu.rows.forEach(function (r) { if (r.year === year) row = r; });
+    if (!row) row = liu.rows[0];
+    // 用「以该年为中心」的流年表重算行动指南：进攻/防守判定、六类决策红绿灯、该做/别做/留意、当年聚焦
+    var ap = _action_playbook(bazi, cv, liu, solar.getFullYear(), dayun_detail);
+    var gp = _year_grade_plain(row.score, row.grade);
+    var zx = row.zodiac || {};
+    var godPlain = YEAR_GOD_PLAIN[row.shi_shen] || (row.shi_shen + "方面的事");
+    var palacePlain = YEAR_PALACE_PLAIN[row.flow_palace] || row.flow_palace;
+    var zxTxt = zx.rel_type && zx.rel_type !== "平"
+      ? ("与你的生肖构成「" + zx.rel_type + "」：" + (zx.rel_text || ""))
+      : "与你的生肖无明显冲合，属平顺之年";
+    // 一句话总览必须同时兼顾「流年评分」与「大运喜忌」，避免两处结论互相打架
+    var wcls = ap.window.cls;
+    var yearTone = row.score >= 0.3 ? "单看流年本身偏顺（评分 " + row.score + "）"
+      : row.score <= -0.3 ? "单看流年动能偏弱（评分 " + row.score + "）"
+        : "单看流年起伏不大（评分 " + row.score + "）";
+    var headline = year + " 年（" + row.gz + " · " + row.age + " 岁）整体是【" + ap.window.verdict + "】的一年。";
+    if (wcls === "lo" && row.score >= 0.3) headline += yearTone + "，但你所处的大运偏忌，所以全年仍以守为主：小步推进可以，重大决策暂缓，别被一时的顺劲带着冒进。";
+    else if (wcls === "hi" && row.score <= -0.3) headline += "大运给力、" + yearTone + "，属于「底盘好、当年仍要留神」的组合，稳着推进即可。";
+    else headline += yearTone + "，大运与流年方向一致——" + gp.act + "。";
+    var gradePlain = wcls === "lo"
+      ? "虽然流年评分是 " + row.score + "（" + row.grade + "），但大运偏忌，整体按防守年处理：先把风险降下来，不辞职、不盲目投资、不替人担保。"
+      : wcls === "hi"
+        ? "流年评分 " + row.score + "（" + row.grade + "）叠加大运助力，是全年动能较足的一年，可以主动争取，但别在顺境里放松风控。"
+        : "流年评分 " + row.score + "（" + row.grade + "），大运平稳，属于不躁进也不必保守的一年——顺势把手里的事做扎实。";
+    var plain = {
+      headline: headline,
+      grade_plain: gradePlain,
+      god: "这一年的主题偏向「" + godPlain + "」——命理上叫「" + row.shi_shen + "」。",
+      palace: "全年重心落在「" + row.flow_palace + "」，也就是" + palacePlain + "。",
+      zodiac: zxTxt,
+      window: "整体判断：" + ap.window.verdict + "。" + ap.window.why,
+      focus: ap.reflection && ap.reflection.year_focus ? ap.reflection.year_focus : null
+    };
+    return {
+      year: year, row: row, rows: liu.rows, ap: ap,
+      fortune_svg: fortune_trend_svg(liu), sihua_svg: liunian_sihua_svg(liu),
+      plain: plain
+    };
   }
 
   // ============ 图表（SVG）============
@@ -12053,21 +12164,28 @@
     var radar_shi_shen = radar_svg(TEN_GOD, TEN_GOD.map(function (t) { return ten_god_count[t]; }), { title: "十神分布", max: 4 });
     var liunian_sihua = liunian_sihua_svg(liu);
     var elem_data = ELEMENTS.map(function (e) { return { name: e, value: b.element_count[e], color: ELEMENT_COLOR[e] }; });
+    // 单年模式：以所选年份为中心重算一份聚焦数据（一生模式不改动任何既有字段）
+    var year_focus = null;
+    if (meta && meta.scope === "year" && meta.focus_year) {
+      year_focus = build_year_focus(b, z, solar, cv, dayun_detail, +meta.focus_year);
+    }
     return {
       birth_input: meta && meta.calendar
         ? {
             calendar: meta.calendar,
             year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace,
             ly: meta.ly, lmo: meta.lmo, ld: meta.ld, lleap: meta.lleap, lshichen: meta.lshichen,
-            sy: meta.sy, smo: meta.smo, sd: meta.sd, sh: meta.sh, smi: meta.smi
+            sy: meta.sy, smo: meta.smo, sd: meta.sd, sh: meta.sh, smi: meta.smi,
+            scope: (meta && meta.scope) || "life", focus_year: (meta && meta.focus_year) || null
           }
-        : { calendar: "阳历", year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace },
+        : { calendar: "阳历", year: y, month: mo, day: d, hour: h, minute: mi, gender: gender, birthplace: birthplace,
+            scope: (meta && meta.scope) || "life", focus_year: (meta && meta.focus_year) || null },
       solar_birth: solar, gender: gender, geo: geo, bazi: b, ziwei: z, yijing: yj, tieban: tb, cv: cv,
       liunian: liu, xiyao: xiyao, shengxiao: sx, numerology: num, qizheng: qz, vimshottari: vim, fengshui: feng, humandesign: hd, transits: tr, qimen: qm, liuren: lr, tarot: tar, ziwei_svg: ziwei_svg, radar_wuxing: radar_wuxing,
       radar_shi_shen: radar_shi_shen,       liunian_sihua: liunian_sihua, fortune_svg: fortune_svg,
       elem_data: elem_data,
       mingge: mingge, yongshen: yongshen, dayun_detail: dayun_detail, action_playbook: action_playbook,
-      past_inference: past_inf,
+      past_inference: past_inf, year_focus: year_focus,
       dim_advice: build_dim_advice({ bazi: b, ziwei: z, yijing: yj, tieban: tb, mingge: mingge, xiyao: xiyao, shengxiao: sx, qizheng: qz, numerology: num, vimshottari: vim, fengshui: feng, humandesign: hd, transits: tr, qimen: qm, liuren: lr, tarot: tar }),
       face: faceSig ? { signals: faceSig, obs: meta.faceObs, px: meta.facePx, img: meta.faceImg } : null,
       palm: palmSig ? { signals: palmSig, obs: meta.palmObs, px: meta.palmPx, img: meta.palmImg } : null
@@ -12094,6 +12212,31 @@
   var SHICHEN = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
   var SHICHEN_HOUR = {"子":0,"丑":2,"寅":4,"卯":6,"辰":8,"巳":10,"午":12,"未":14,"申":16,"酉":18,"戌":20,"亥":22};
   var calMode = "农历";
+  var scopeMode = "life";   // "life"=一生的完整运程 | "year"=只看某一年
+  // ---- 测算范围：单年模式年份下拉（出生年 ~ 出生年+100）----
+  function fillFocusYears(keep){
+    var sel=document.getElementById("f_focus_year");
+    var by=+document.getElementById("f_year").value || new Date().getFullYear();
+    var nowY=new Date().getFullYear();
+    var want = keep || (nowY>=by && nowY<=by+100 ? nowY : by);
+    var opts=[]; for(var y=by;y<=by+100;y++) opts.push({v:y,t:y+"年"+(y===nowY?"（今年）":"")});
+    sel.innerHTML=""; fill("f_focus_year",opts,want);
+  }
+  function applyScope(){
+    document.getElementById("wrap_scope_year").classList.toggle("hidden", scopeMode!=="year");
+    document.getElementById("scopeHint").textContent = scopeMode==="year"
+      ? "已选「只看某一年」：将聚焦所选年份的运势、五大领域建议、决策红绿灯与关键月份，报告更短、更适合手机阅读。想看完整一生，切回上面第一项即可。"
+      : "「一生的完整运程」输出十七维全报告（性格、事业、婚姻、大运、逐年详批…）；「只看某一年」则聚焦所选年份的运势与可执行建议，篇幅更短、更适合手机阅读。";
+    if(scopeMode==="year") fillFocusYears();
+  }
+  document.querySelectorAll("#f_scope button").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      scopeMode = btn.getAttribute("data-scope");
+      document.querySelectorAll("#f_scope button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+      applyScope();
+    });
+  });
+  document.getElementById("f_year").addEventListener("change",function(){ if(scopeMode==="year") fillFocusYears(); });
   // ---- 初始化表单 ----
   function fill(sel, items, val){ var el=document.getElementById(sel); items.forEach(function(it){
     var o=document.createElement("option"); o.value=it.v!=null?it.v:it; o.text=it.t!=null?it.t:it;
@@ -12166,6 +12309,7 @@
     });
   });
   applyCalMode();
+  applyScope();
 
   // ---- 相学：开关 / 摄像头 / 上传 / 像素气色 ----
   var xiState = { face: null, palm: null };
@@ -12255,6 +12399,7 @@
 
   // ---- 渲染 ----
   function render(ctx){
+    if(ctx.year_focus){ render_year(ctx); return; }   // 单年模式走独立精简报告；一生报告完全不变
     var b=ctx.bazi, z=ctx.ziwei, yj=ctx.yijing, tb=ctx.tieban, cv=ctx.cv, liu=ctx.liunian, geo=ctx.geo, ap=ctx.action_playbook;
     var H=[]; var WEST_SIGNS = ML.C.WEST_SIGNS;
     function dimTip(k){ var a=ctx.dim_advice && ctx.dim_advice[k]; if(!a) return ""; return '<div class="dim-tip"><b>📌 小结 · 建议</b>'+esc(a.summary)+'<span class="dt-adv">'+esc(a.advice)+'</span></div>'; }
@@ -12796,20 +12941,150 @@
     H.push('<div class="note">大运建议已接入八维：①八字四柱（干支十神＋地支藏干喜忌）②紫微斗数（大限宫位＋运干四化飞星落宫）③周易（每运一卦，干支化数起卦）④铁板神数（运干化数推演大运数序）⑤西洋占星（本命盘＋次限/流年行运，依出生地经纬度推算，行运太阳/木土落座与重点相位）⑥生肖流年（年柱定生肖、逐年论太岁三合/六冲/刑害破）⑦相学（勾选时并入交叉验证）⑧流年逐年评分。八维结论在每步大运汇总为「十七维交叉：吉/平/凶」。紫微大限自命宫起每运进一宫、顺逆依命局阴阳与性别；铁板数、本运卦、西洋行运、生肖太岁均为数序/星象/民俗推演之参考，非定数。</div>');
     H.push('</div>');
 
+    mountReport(H, ctx);
+  }
+  // 报告统一挂载（一生报告 / 单年报告共用）
+  function mountReport(H, ctx){
     var rep=document.getElementById("report");
     rep.innerHTML=H.join("");
     rep.querySelectorAll("table").forEach(function(t){ var w=document.createElement("div"); w.className="tablescroll"; t.parentNode.insertBefore(w,t); w.appendChild(t); });
     rep.classList.remove("hidden");
     rep.scrollIntoView({behavior:"smooth",block:"start"});
-    document.getElementById("btnCSV").addEventListener("click",function(){ exportCSV(ctx); });
-    document.getElementById("btnSave").addEventListener("click",function(){ saveCurrent(ctx); });
-    document.getElementById("btnPDF").addEventListener("click",function(){ window.print(); });
-    document.getElementById("btnBack").addEventListener("click",function(){ window.scrollTo({top:0,behavior:"smooth"}); });
+    var bind=function(id,fn){ var el=document.getElementById(id); if(el) el.addEventListener("click",fn); };
+    bind("btnCSV",function(){ exportCSV(ctx); });
+    bind("btnSave",function(){ saveCurrent(ctx); });
+    bind("btnPDF",function(){ window.print(); });
+    bind("btnBack",function(){ window.scrollTo({top:0,behavior:"smooth"}); });
+    bind("btnSwitchLife",function(){
+      scopeMode="life";
+      document.querySelectorAll("#f_scope button").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-scope")==="life"); });
+      applyScope();
+      document.getElementById("btnRun").click();
+    });
+  }
+  // ============ 单年运程报告（聚焦、通俗、手机友好）============
+  function render_year(ctx){
+    var yf=ctx.year_focus, r=yf.row, ap=yf.ap, P=yf.plain, b=ctx.bazi, bi=ctx.birth_input;
+    var H=[];
+    var gcls=clsOf(r.grade);
+    var toneCls = gcls==="hi" ? "hi" : (gcls==="lo" ? "lo" : "mid");
+    var toneBg = gcls==="hi" ? "background:#e7f3ea;color:var(--green)" : (gcls==="lo" ? "background:#f8e7e1;color:var(--red)" : "background:#f6efda;color:#9a7a2f");
+    var zx=r.zodiac||{};
+
+    // 一、年份速览
+    H.push('<div class="card"><h2>一、'+r.year+' 年运程速览</h2>');
+    H.push('<div class="yr-hero"><div class="yh-year">'+r.year+' 年 · '+gz(r.gz)+'</div>');
+    H.push('<div class="yh-gz">'+r.age+' 岁 ｜ '+esc(zx.animal||'')+'年'+(zx.rel_type&&zx.rel_type!=='平'?'（'+esc(zx.rel_type)+'）':'')+' ｜ 纳音'+esc(r.nayin)+'</div>');
+    H.push('<div><span class="yh-tone" style="'+toneBg+'">'+esc(r.grade)+' · 评分 '+r.score+'</span></div></div>');
+    H.push('<div class="ov-tip"><b>💡 一句话看懂：</b>'+esc(P.headline)+'</div>');
+    H.push('<div class="plain-box"><div class="pb-h">这一年，用大白话说</div>');
+    H.push('<div class="pb-row">· '+esc(P.god)+'</div>');
+    H.push('<div class="pb-row">· '+esc(P.palace)+'</div>');
+    H.push('<div class="pb-row">· '+esc(P.zodiac)+'</div>');
+    H.push('<div class="pb-row">· 正行「'+(r.dayun_gz==='—'?'尚未起运':esc(r.dayun_gz))+'」大运，全年'+esc(ap.window.verdict)+'。</div>');
+    H.push('</div>');
+    H.push('<div class="kv" style="margin-top:10px">');
+    H.push('<span class="k">命主：</span><span class="v">'+esc(bi.gender)+' · '+esc(bi.birthplace)+'</span>');
+    H.push('<span class="k">日主：</span><span class="v">'+esc(b.day_master)+'（'+esc(b.day_element)+'）· '+esc(b.strength)+'</span>');
+    H.push('<span class="k">录入：</span><span class="v">'+esc(bi.calendar==="农历"?(bi.ly+'年'+ZH[bi.lmo-1]+bi.ld+'日'):(bi.year+'-'+bi.month+'-'+bi.day))+'</span>');
+    H.push('</div>');
+    H.push('<div class="dim-tip"><b>📌 小结 · 建议</b>'+esc(P.window)+'</div>');
+    H.push('</div>');
+
+    // 二、全年运势评级与关键信号
+    H.push('<div class="card"><h2>二、全年运势评级</h2>');
+    H.push('<div class="grade-banner grade-'+(gcls==='hi'?'hi':gcls==='lo'?'bad':'mid')+'" style="font-size:15px">'+esc(r.grade)+'　｜　综合评分 '+r.score+'</div>');
+    H.push('<div class="plain">💡 大白话：'+esc(P.grade_plain)+'</div>');
+    H.push('<table class="rt" style="margin-top:10px"><tr><th>项目</th><th>本年信号</th><th>说明</th></tr>');
+    H.push('<tr><td data-label="项目">流年十神</td><td data-label="本年信号">'+esc(r.shi_shen)+'</td><td data-label="说明" style="text-align:left">'+esc(P.god)+'</td></tr>');
+    H.push('<tr><td data-label="项目">流年命宫</td><td data-label="本年信号">'+esc(r.flow_palace)+'</td><td data-label="说明" style="text-align:left">'+esc(P.palace)+'</td></tr>');
+    H.push('<tr><td data-label="项目">生肖太岁</td><td data-label="本年信号">'+esc(zx.rel_type||'平')+'</td><td data-label="说明" style="text-align:left">'+esc(zx.rel_text||P.zodiac)+'</td></tr>');
+    H.push('<tr><td data-label="项目">外行星主题</td><td data-label="本年信号">'+esc(r.transit_note||'—')+'</td><td data-label="说明" style="text-align:left">木星/土星与本命的相位，代表这一两年外部环境给你的助力或压力。</td></tr>');
+    H.push('<tr><td data-label="项目">四化引动</td><td data-label="本年信号">'+esc(r.sihua_hit&&r.sihua_hit.length?r.sihua_hit.join('、'):'未落本命宫')+'</td><td data-label="说明" style="text-align:left">「禄」主顺遂得利、「忌」主阻滞反复；没有引动就按十神与大运顺势走。</td></tr>');
+    H.push('</table>');
+    H.push('<div class="plain-box"><div class="pb-h">年度总论</div><div class="pb-row">'+esc(r.advice_long||r.advice)+'</div></div>');
+    H.push('</div>');
+
+    // 三、五大领域具体建议
+    H.push('<div class="card"><h2>三、这一年，五个方面该怎么过</h2>');
+    H.push('<div class="ygrid">');
+    [["事业","💼"],["财运","💰"],["人际","🤝"],["健康","🌿"],["时机","⏳"]].forEach(function(k){
+      var txt = (r.advice_cat&&r.advice_cat[k[0]]) ? r.advice_cat[k[0]] : "本年无特别提示，按常规节奏稳步推进即可。";
+      H.push('<div class="ycard"><div class="yc-h">'+k[1]+' '+k[0]+'</div><div class="yc-b">'+esc(txt)+'</div></div>');
+    });
+    H.push('</div>');
+    var fcs=P.focus;
+    if(fcs) H.push('<div class="dim-tip"><b>📌 小结 · 今年最该'+esc(fcs.tone)+'的一件事</b>'+esc(fcs.text)+'</div>');
+    H.push('</div>');
+
+    // 四、重大决策红绿灯
+    H.push('<div class="card"><h2>四、重大决策红绿灯（'+r.year+' 年）</h2>');
+    var lmap={green:["yl-g","✅ 绿灯 · 可推进"],amber:["yl-a","⚠ 黄灯 · 谨慎择机"],red:["yl-r","⛔ 红灯 · 尽量缓一缓"]};
+    (ap.decisions||[]).forEach(function(d){
+      var lm=lmap[d.light]||lmap.amber;
+      H.push('<div class="ylight '+lm[0]+'"><span class="yl-n">'+esc(d.name)+'</span><span>'+esc(d.text)+'</span></div>');
+    });
+    H.push('<div class="note">绿灯不代表闭眼冲、红灯也不是什么都不能做——它提示的是这一年的「风险承受度」：越偏红，越要把决定拆小、留退路、以现实反馈校准。</div>');
+    H.push('</div>');
+
+    // 五、该做 / 别做 / 留意
+    H.push('<div class="card"><h2>五、行动清单</h2>');
+    function actList(title,cls,arr){ if(!arr||!arr.length) return; H.push('<div class="act-h">'+title+'</div><ul class="act-list '+cls+'">'); arr.forEach(function(t){ H.push('<li>'+esc(t)+'</li>'); }); H.push('</ul>'); }
+    actList('✅ 该做（把力气花在这些地方）','act-do',ap.do_list);
+    actList('⛔ 别做（这些最容易踩坑）','act-dont',ap.dont_list);
+    actList('⚠ 留意（需要现实校准的地方）','act-watch',ap.watch_list);
+    H.push('</div>');
+
+    // 六、关键月份
+    var km=r.key_months||{}, fav=km.favor||[], wat=km.watch||[];
+    H.push('<div class="card"><h2>六、关键月份</h2>');
+    H.push('<div class="plain">💡 大白话：把重要的事尽量排在「宜把握」的月份；「宜谨慎」的月份容易起变动或冲动，签合同、大额支出、摊牌之类能避就避。</div>');
+    H.push('<div class="act-h">✅ 宜把握的月份</div>');
+    H.push('<div class="ymonth">'+(fav.length?fav.map(function(x){return '<span class="mg">'+esc(x)+'</span>';}).join(''):'<span class="mg">全年节奏平缓，无明显特别顺的月份，按计划稳步推进即可</span>')+'</div>');
+    H.push('<div class="act-h">⚠ 宜谨慎的月份</div>');
+    H.push('<div class="ymonth">'+(wat.length?wat.map(function(x){return '<span class="mr">'+esc(x)+'</span>';}).join(''):'<span class="mg">无明显冲动月份，仍按常规风控走</span>')+'</div>');
+    H.push('</div>');
+
+    // 七、前后五年走势
+    H.push('<div class="card"><h2>七、这一年在人生曲线中的位置</h2>');
+    H.push('<div class="svgbox">'+yf.fortune_svg+'<div class="note">前后各两年运势评分折线（居中为 '+r.year+' 年）</div></div>');
+    H.push('<table class="rt"><tr><th>年份</th><th>干支</th><th>岁</th><th>等级</th><th>评分</th><th>一句话</th></tr>');
+    yf.rows.forEach(function(x){
+      H.push('<tr'+(x.year===r.year?' style="background:#fff7e0"':'')+'><td data-label="年份">'+(x.year===r.year?'<b>'+x.year+' ★</b>':x.year)+'</td><td data-label="干支">'+gz(x.gz)+'</td><td data-label="岁">'+x.age+'</td><td data-label="等级"><span class="pill '+clsOf(x.grade)+'">'+esc(x.grade)+'</span></td><td data-label="评分">'+x.score+'</td><td data-label="一句话" style="text-align:left">'+esc(x.advice)+'</td></tr>');
+    });
+    H.push('</table>');
+    H.push('<div class="dim-tip"><b>📌 小结 · 建议</b>看曲线是为了定节奏：评分高的年份敢争取、把关键事往前排；评分低的年份先把风险降下来、把能力短板补上。不必把某一年当成定数。</div>');
+    H.push('</div>');
+
+    // 八、推算依据（折叠，术语层）
+    H.push('<div class="card"><h2>八、推算依据（想核对可展开）</h2>');
+    H.push('<details class="yearadv"><summary>展开：这一年是怎么算出来的</summary><div class="cat">');
+    H.push('<div><b>机理：</b>'+esc(r.mechanism)+'</div>');
+    H.push('<div><b>综合摘要：</b>'+esc(r.summary)+'</div>');
+    H.push('<div><b>流年主星：</b>'+esc((r.flow_stars||[]).join('、')||'空宫借对宫')+'；<b>辅星：</b>'+esc((r.flow_fu_stars||[]).join('、')||'—')+'</div>');
+    H.push('</div></details>');
+    H.push('<details class="yearadv"><summary>展开：前后年份四化盘</summary><div class="svgbox">'+yf.sihua_svg+'</div></details>');
+    H.push('<div class="note">单年结论由八字流年十神与大运喜忌、紫微流年命宫与四化、生肖太岁、木土过运等信号交叉得出，与「一生的完整运程」用的是同一套算法，只是把镜头对准了这一年。</div>');
+    H.push('</div>');
+
+    // 九、收尾
+    H.push('<div class="card"><h2>九、写在最后</h2>');
+    H.push('<div class="ov-tip"><b>📌 一句忠告：</b>运势是节奏参考，不是判决书。这一年真正决定结果的，仍是你在关键节点上做没做该做的事、有没有忍住不该做的事。</div>');
+    H.push('<div class="yr-switch">想看完整的一生运程（性格底色、大运全程、逐年详批、十七维交叉验证）？点下面按钮即可一键切换回完整报告，不用重新填资料。</div>');
+    H.push('<div class="actions" style="margin-top:12px"><button class="btn ghost" id="btnSwitchLife">↔ 切换为「一生的完整运程」</button>');
+    H.push('<button class="btn ghost" id="btnSave">保存此排盘</button>');
+    H.push('<button class="btn ghost" id="btnPDF">存为 PDF</button>');
+    H.push('<button class="btn ghost" id="btnCSV">导出逐年 CSV</button>');
+    H.push('<button class="btn ghost" id="btnBack">↑ 返回录入 / 换一年</button></div>');
+    H.push('<div class="note">以上用于传统文化研究与自我认知参考，不构成医疗、投资、法律或人生决策建议；重大决定请结合自身实际与现实反馈。</div>');
+    H.push('</div>');
+
+    mountReport(H, ctx);
   }
   function pick(m,sys){ for(var i=0;i<m.votes.length;i++) if(m.votes[i].system===sys) return [m.votes[i].text,m.votes[i].level]; return null; }
 
   function exportCSV(ctx){
-    var rows=ctx.liunian.rows;
+    var rows=(ctx.year_focus ? ctx.year_focus.rows : ctx.liunian.rows);
     var header=["年份","年龄","流年干支","纳音","流年十神","大运","大运十神","流年命宫","流年四化","评分","等级","建议","分维指导"];
     var lines=[header.join(",")];
     rows.forEach(function(r){
@@ -12862,6 +13137,12 @@
         if(sd>maxd) throw new Error(smo+"月最多"+maxd+"天，请重新选择日期。");
         meta={ calendar:"阳历", sy:sy, smo:smo, sd:sd, sh:sh, smi:smi };
       }
+      meta.scope = scopeMode;
+      if(scopeMode==="year"){
+        var fy=+document.getElementById("f_focus_year").value;
+        if(!fy || fy<1900 || fy>2200) throw new Error("请选择有效的测算年份。");
+        meta.focus_year=fy;
+      }
       if(document.getElementById("f_xiang").checked){
         var faceObs=collectFace(), palmObs=collectPalm();
         var faceUsed=!!(xiState.face || anyObs(faceObs));
@@ -12881,8 +13162,10 @@
   // ---- 示例 ----
   document.getElementById("btnDemo").addEventListener("click",function(){
     calMode="农历";
+    scopeMode="life";
     document.querySelectorAll("#f_cal button").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-cal")==="农历"); });
-    applyCalMode();
+    document.querySelectorAll("#f_scope button").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-scope")==="life"); });
+    applyCalMode(); applyScope();
     document.getElementById("f_year").value=1990;
     document.getElementById("f_month").value=4;
     document.getElementById("f_day").value=27;
@@ -12902,6 +13185,8 @@
     var label = inp.calendar==="农历"
       ? (inp.ly+"年"+ZH[inp.lmo-1]+(inp.lleap?"闰":"")+inp.ld+"日"+inp.lshichen+" "+inp.gender+" "+inp.birthplace)
       : (inp.year+"-"+inp.month+"-"+inp.day+" "+inp.gender+" "+inp.birthplace);
+    if(inp.scope==="year" && inp.focus_year) label += " · "+inp.focus_year+"年运程";
+    else label += " · 一生运程";
     var rec={ input: inp, label: label, ts: Date.now() };
     var list=getSaved().filter(function(x){return x.label!==rec.label;});
     list.unshift(rec); if(list.length>20) list=list.slice(0,20);
@@ -12939,6 +13224,10 @@
       }
       document.getElementById("f_gender").value=inp.gender;
       document.getElementById("f_city").value=inp.birthplace;
+      scopeMode = inp.scope==="year" ? "year" : "life";
+      document.querySelectorAll("#f_scope button").forEach(function(x){ x.classList.toggle("active", x.getAttribute("data-scope")===scopeMode); });
+      applyScope();
+      if(scopeMode==="year" && inp.focus_year) fillFocusYears(+inp.focus_year);
       document.getElementById("btnRun").click();
     });});
     box.querySelectorAll("[data-del]").forEach(function(b){ b.addEventListener("click",function(){
